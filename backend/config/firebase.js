@@ -1,25 +1,13 @@
-const { initializeApp, cert } = require("firebase-admin/app");
-const { getMessaging } = require("firebase-admin/messaging");
-const path = require("path");
+const admin = require("firebase-admin");
 
-let messaging = null;
-let firebaseApp = null;
-
-try {
-  const serviceAccount = require(
-    path.join(__dirname, "firebase-service-account.json"),
-  );
-
-  firebaseApp = initializeApp({
-    credential: cert(serviceAccount),
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+    }),
   });
-
-  messaging = getMessaging(firebaseApp);
-} catch (error) {
-  console.error("Firebase Admin SDK failed to initialize:", error.message);
 }
 
-module.exports = {
-  firebaseApp,
-  messaging,
-};
+module.exports = admin;
