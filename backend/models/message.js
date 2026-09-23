@@ -13,6 +13,7 @@ const messageSchema = new mongoose.Schema(
     text: { type: String, trim: true, default: "", maxlength: 2000 },
     mediaUrl: { type: String, default: null },
     mediaType: { type: String, enum: ["image", "video"], default: null },
+    cloudinaryPublicId: { type: String, default: null },
     deletedForAll: { type: Boolean, default: false },
     deletedFor: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     readAt: { type: Date, default: null },

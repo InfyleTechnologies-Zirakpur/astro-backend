@@ -1,6 +1,4 @@
 const express = require("express");
-const fs = require("fs");
-const path = require("path");
 const multer = require("multer");
 const { protect } = require("../middlewares/authMiddleware");
 const {
@@ -14,27 +12,7 @@ const {
   markMessagesRead,
 } = require("../controllers/chatController");
 
-const uploadDirectory = path.join(__dirname, "..", "uploads", "chat-media");
-fs.mkdirSync(uploadDirectory, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: uploadDirectory,
-  filename: (req, file, callback) => {
-    const extension =
-      file.mimetype === "image/png"
-        ? ".png"
-        : file.mimetype === "image/webp"
-          ? ".webp"
-          : file.mimetype === "image/gif"
-            ? ".gif"
-            : file.mimetype === "video/webm"
-              ? ".webm"
-              : file.mimetype === "video/quicktime"
-                ? ".mov"
-                : ".mp4";
-    callback(null, `${req.user._id}-${Date.now()}${extension}`);
-  },
-});
+const storage = multer.memoryStorage();
 
 const uploadChatMediaFile = multer({
   storage,

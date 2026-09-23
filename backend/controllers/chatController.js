@@ -4,6 +4,7 @@ const Message = require("../models/message");
 const { blockedMessageReason } = require("../services/messageFilter");
 const { getIo } = require("../services/socketHub");
 const { sendChatNotification } = require("../services/notificationService");
+const { uploadChatMedia, deleteMedia, extractPublicIdFromUrl } = require("../config/cloudinary");
 
 const getParticipantMatch = async (matchId, userId) => {
   if (!mongoose.isValidObjectId(matchId)) return { error: "Invalid matchId", status: 400 };
@@ -171,13 +172,18 @@ const sendMediaMessage = async (req, res, next) => {
     const mediaType = req.file.mimetype.startsWith("video/") ? "video" : "image";
     const caption = typeof req.body.caption === "string" ? req.body.caption.trim().slice(0, 500) : "";
 
+    const uploadResult = await uploadChatMedia(req.file.buffer, req.user._id, req.file.mimetype);
+    const mediaUrl = uploadResult.secure_url;
+    const cloudinaryPublicId = uploadResult.public_id;
+
     const message = await Message.create({
       match: result.match._id,
       sender: req.user._id,
       recipient: getOtherParticipant(result.match, req.user._id),
       type: "media",
       mediaType,
-      mediaUrl: `/uploads/chat-media/${req.file.filename}`,
+      mediaUrl,
+      cloudinaryPublicId,
       text: caption,
     });
 
@@ -217,6 +223,11 @@ const deleteMessageForEveryone = async (req, res, next) => {
     if (result.error) return res.status(result.status).json({ success: false, message: result.error });
     if (String(result.message.sender) !== String(req.user._id)) {
       return res.status(403).json({ success: false, message: "Only the sender can delete this message for everyone" });
+    }
+
+    if (result.message.cloudinaryPublicId) {
+      const resourceType = result.message.mediaType === "video" ? "video" : "image";
+      await deleteMedia(result.message.cloudinaryPublicId, resourceType).catch(() => {});
     }
 
     await Message.updateOne(

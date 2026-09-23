@@ -1,28 +1,17 @@
 const express = require("express");
-const fs = require("fs");
-const path = require("path");
 const multer = require("multer");
 const { protect } = require("../middlewares/authMiddleware");
 const { createProfile, getMyProfile, updateProfile, uploadProfilePhoto, deleteProfilePhoto, setPrimaryPhoto, getProfileById } = require("../controllers/profileController");
 
-const uploadDirectory = path.join(__dirname, "..", "uploads", "profile-photos");
-fs.mkdirSync(uploadDirectory, { recursive: true });
-
-const storage = multer.diskStorage({
-	destination: uploadDirectory,
-	filename: (req, file, callback) => {
-		const extension = file.mimetype === "image/png" ? ".png" : file.mimetype === "image/webp" ? ".webp" : ".jpg";
-		callback(null, `${req.user._id}-${Date.now()}${extension}`);
-	},
-});
+const storage = multer.memoryStorage();
 
 const uploadProfilePhotoFile = multer({
-	storage,
-	limits: { fileSize: 5 * 1024 * 1024 },
-	fileFilter: (req, file, callback) => {
-		if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) return callback(new Error("Only JPEG, PNG, and WebP images are allowed"));
-		callback(null, true);
-	},
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, callback) => {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) return callback(new Error("Only JPEG, PNG, and WebP images are allowed"));
+    callback(null, true);
+  },
 });
 
 const router = express.Router();

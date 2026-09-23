@@ -1,5 +1,6 @@
 const Profile = require("../models/profile");
 const User = require("../models/user");
+const { uploadProfilePhoto: uploadProfilePhotoToCloudinary, deleteMedia, extractPublicIdFromUrl } = require("../config/cloudinary");
 
 const MAX_PHOTOS = 6;
 
@@ -76,8 +77,9 @@ const uploadProfilePhoto = async (req, res, next) => {
       return res.status(400).json({ success: false, message: `You can add up to ${MAX_PHOTOS} photos` });
     }
 
-    const photoPath = `/uploads/profile-photos/${file.filename}`;
-    photos.push(photoPath);
+    const result = await uploadProfilePhotoToCloudinary(file.buffer, req.user._id);
+    const photoUrl = result.secure_url;
+    photos.push(photoUrl);
     const updated = await savePhotos(req.user._id, photos);
     res.json({ success: true, message: "Photo added", data: serializeProfile(updated) });
   } catch (error) { next(error); }
@@ -93,6 +95,11 @@ const deleteProfilePhoto = async (req, res, next) => {
 
     const photos = existingPhotos(profile);
     if (!photos.includes(photo)) return res.status(404).json({ success: false, message: "Photo not found" });
+
+    const publicId = extractPublicIdFromUrl(photo);
+    if (publicId) {
+      await deleteMedia(publicId, "image").catch(() => {});
+    }
 
     const remaining = photos.filter((item) => item !== photo);
     const updated = await savePhotos(req.user._id, remaining);
