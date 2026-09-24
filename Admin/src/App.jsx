@@ -7,11 +7,8 @@ import UserDetail from './pages/UserDetail'
 import Profiles from './pages/Profiles'
 import Matches from './pages/Matches'
 import MatchDetail from './pages/MatchDetail'
-import Chats from './pages/Chats'
-import Messages from './pages/Messages'
 import Questionnaires from './pages/Questionnaires'
 import Horoscopes from './pages/Horoscopes'
-import AstroConversations from './pages/AstroConversations'
 import DeviceTokens from './pages/DeviceTokens'
 
 const App = () => {
@@ -25,11 +22,8 @@ const App = () => {
         <Route path="/profiles" element={<Profiles />} />
         <Route path="/matches" element={<Matches />} />
         <Route path="/matches/:matchId" element={<MatchDetail />} />
-        <Route path="/chats" element={<Chats />} />
-        <Route path="/messages" element={<Messages />} />
         <Route path="/questionnaires" element={<Questionnaires />} />
         <Route path="/horoscopes" element={<Horoscopes />} />
-        <Route path="/astro" element={<AstroConversations />} />
         <Route path="/device-tokens" element={<DeviceTokens />} />
       </Route>
     </Routes>

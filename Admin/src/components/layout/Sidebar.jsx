@@ -4,11 +4,8 @@ import {
   Users,
   UserCircle2,
   Heart,
-  MessageSquare,
-  Mail,
   ClipboardList,
   Sparkles,
-  Brain,
   Smartphone,
 } from 'lucide-react'
 
@@ -17,11 +14,8 @@ const navItems = [
   { to: '/users', label: 'Users', icon: Users },
   { to: '/profiles', label: 'Profiles', icon: UserCircle2 },
   { to: '/matches', label: 'Matches', icon: Heart },
-  { to: '/chats', label: 'Chats', icon: MessageSquare },
-  { to: '/messages', label: 'Messages', icon: Mail },
   { to: '/questionnaires', label: 'Questionnaires', icon: ClipboardList },
   { to: '/horoscopes', label: 'Horoscopes', icon: Sparkles },
-  { to: '/astro', label: 'Astro Q&A', icon: Brain },
   { to: '/device-tokens', label: 'Device Tokens', icon: Smartphone },
 ]
 

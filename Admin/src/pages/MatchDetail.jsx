@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useFetch } from '../hooks/useFetch'
 import { PageHeader, Spinner, ErrorState, Badge, EmptyState } from '../components/ui'
 import { formatDateTime } from '../lib/utils'
-import { MATCH_STATUS, MESSAGE_TYPES } from '../lib/constants'
+import { MATCH_STATUS } from '../lib/constants'
 import api from '../services/api'
 import { useState } from 'react'
 
@@ -133,36 +133,6 @@ const MatchDetail = () => {
               </div>
             )}
           </div>
-        </div>
-      </div>
-
-      <div className="mt-6 rounded-xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-200 px-5 py-3">
-          <h2 className="text-sm font-semibold text-slate-900">Messages ({match.messages?.length || 0})</h2>
-        </div>
-        <div className="max-h-96 overflow-y-auto px-5 py-4">
-          {match.messages?.length ? (
-            <div className="space-y-3">
-              {match.messages.map((message) => (
-                <div key={message._id} className="rounded-lg border border-slate-200 p-3">
-                  <div className="mb-1 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-slate-800">{message.sender?.name}</span>
-                      <Badge className={MESSAGE_TYPES[message.type]?.className}>{message.type}</Badge>
-                    </div>
-                    <span className="text-xs text-slate-400">{formatDateTime(message.createdAt)}</span>
-                  </div>
-                  {message.mediaUrl ? (
-                    <img src={message.mediaUrl} alt="media" className="mt-1 max-h-32 rounded-lg object-cover" />
-                  ) : (
-                    <p className="text-sm text-slate-600">{message.text || '—'}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState message="No messages in this match" />
-          )}
         </div>
       </div>
     </div>

@@ -4,9 +4,6 @@ import {
   FileText,
   Heart,
   HeartHandshake,
-  MessageSquare,
-  MessagesSquare,
-  Brain,
   CalendarDays,
 } from 'lucide-react'
 import { useFetch } from '../hooks/useFetch'
@@ -20,7 +17,7 @@ const Dashboard = () => {
   if (error) return <ErrorState message={error} onRetry={reload} />
 
   const stats = data?.data || {}
-  const maxDay = Math.max(1, ...(stats.last7Days || []).map((day) => Math.max(day.registrations, day.messages)))
+  const maxDay = Math.max(1, ...(stats.last7Days || []).map((day) => day.registrations))
 
   return (
     <div>
@@ -32,30 +29,22 @@ const Dashboard = () => {
         <StatCard icon={FileText} label="Completed Profiles" value={formatNumber(stats.completedProfiles)} tone="sky" />
         <StatCard icon={Heart} label="Total Matches" value={formatNumber(stats.totalMatches)} sublabel={`${formatNumber(stats.pendingMatches)} pending`} tone="rose" />
         <StatCard icon={HeartHandshake} label="Accepted Matches" value={formatNumber(stats.acceptedMatches)} tone="emerald" />
-        <StatCard icon={MessageSquare} label="Total Messages" value={formatNumber(stats.totalMessages)} sublabel={`${formatNumber(stats.mediaMessages)} media`} tone="violet" />
-        <StatCard icon={MessagesSquare} label="Active Chats" value={formatNumber(stats.totalChats)} tone="amber" />
-        <StatCard icon={Brain} label="Astro Q&A Sessions" value={formatNumber(stats.astroConversations)} tone="sky" />
       </div>
 
       <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
         <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900">
           <CalendarDays className="h-4 w-4 text-indigo-600" />
-          Registrations & Messages — Last 7 Days
+          Registrations — Last 7 Days
         </h2>
         {stats.last7Days && stats.last7Days.length > 0 ? (
           <div className="flex items-end gap-4 overflow-x-auto pb-2">
             {stats.last7Days.map((day) => (
               <div key={day.date} className="flex min-w-[80px] flex-col items-center gap-1">
-                <div className="flex h-40 items-end gap-1.5">
+                <div className="flex h-40 items-end">
                   <div
                     className="w-5 rounded-t bg-indigo-500"
                     style={{ height: `${Math.max(4, (day.registrations / maxDay) * 100)}%` }}
                     title={`${day.registrations} registrations`}
-                  />
-                  <div
-                    className="w-5 rounded-t bg-violet-400"
-                    style={{ height: `${Math.max(4, (day.messages / maxDay) * 100)}%` }}
-                    title={`${day.messages} messages`}
                   />
                 </div>
                 <p className="text-xs font-medium text-slate-500">{day.date.slice(5)}</p>
@@ -65,7 +54,6 @@ const Dashboard = () => {
         ) : null}
         <div className="mt-3 flex gap-4 text-xs text-slate-500">
           <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-indigo-500" /> Registrations</span>
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-violet-400" /> Messages</span>
         </div>
       </div>
     </div>
