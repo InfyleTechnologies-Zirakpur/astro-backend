@@ -36,17 +36,29 @@ const flush = () => {
 };
 
 for (const line of lines) {
-  const h1 = line.match(H1);
+  // Strip transcript artifacts so the generated chunks never carry
+  // speaker labels or timestamps into the RAG prompt (the model used to
+  // mirror that formatting in its answers, e.g. "Speaker 1: ...").
+  // 1) Timestamp-only bold headers like "**Speaker 1  00:01**" or
+  //    "**Unknown Speaker  00:00**" add no content — drop the line.
+  if (/^\*\*(?:Unknown\s+)?Speaker\b.*\*\*$/i.test(line)) continue;
+  // 2) Speaker blockquotes like "> Speaker 1 (00:00): "text"" keep the
+  //    quoted speech but drop the speaker + timestamp prefix.
+  const cleanedLine = line
+    .replace(/^>\s*Speaker\s+\d+\s*\([^)]*\)\s*[:：]\s*/i, "> ")
+    .replace(/\bspeaker\b/gi, "teacher");
+
+  const h1 = cleanedLine.match(H1);
   if (h1) {
     currentPart = h1[1].trim();
     continue;
   }
-  const h2 = line.match(H2);
+  const h2 = cleanedLine.match(H2);
   if (h2) {
     currentSection = h2[1].trim();
     continue;
   }
-  const ruleMatch = line.match(RULE_HEADING);
+  const ruleMatch = cleanedLine.match(RULE_HEADING);
   if (ruleMatch) {
     flush();
     current = {
@@ -59,7 +71,7 @@ for (const line of lines) {
     continue;
   }
   if (current) {
-    current.text += line + "\n";
+    current.text += cleanedLine + "\n";
   }
 }
 flush();

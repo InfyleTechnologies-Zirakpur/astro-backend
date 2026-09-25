@@ -21,6 +21,8 @@ const buildHoroscopeData = (body) => {
   if (body.moonSign !== undefined) data.moonSign = body.moonSign;
   if (body.nakshatra !== undefined) data.nakshatra = body.nakshatra;
 
+  if (body.timeZoneId !== undefined) data.timeZoneId = body.timeZoneId;
+
   return data;
 };
 
@@ -32,15 +34,39 @@ const includeCalculatedChart = (horoscope) => {
 
 const hydrateBirthLocation = async (body) => {
   const place = body.birthPlace || body.placeOfBirth || body.place || "";
-  if (!place) return buildHoroscopeData(body);
+  const baseData = buildHoroscopeData(body);
 
-  const resolved = await resolveBirthLocationFromPlace(place);
+  // Explicit user-supplied offset bypasses geo-resolved data entirely.
+  // The user owns the value; we just record it as high-trust precision.
+  if (body.timeZoneOffsetMinutes !== undefined && Number.isFinite(Number(body.timeZoneOffsetMinutes))) {
+    baseData.timeZoneOffsetMinutes = Number(body.timeZoneOffsetMinutes);
+    baseData.timeZonePrecision = "user";
+    if (body.latitude !== undefined && body.longitude !== undefined) {
+      baseData.latitude = Number(body.latitude);
+      baseData.longitude = Number(body.longitude);
+    }
+    return baseData;
+  }
+
+  if (!place) return baseData;
+
+  const birthDate = body.birthDate || body.dateOfBirth;
+  const resolved = await resolveBirthLocationFromPlace(place, birthDate);
+  if (!resolved) {
+    const error = new Error("Could not resolve the birth place to coordinates and timezone. Please check the place name or provide a timezone offset manually.");
+    error.expose = true;
+    error.statusCode = 400;
+    throw error;
+  }
+
   return {
-    ...buildHoroscopeData(body),
+    ...baseData,
     placeOfBirth: resolved.placeOfBirth,
     latitude: resolved.latitude,
     longitude: resolved.longitude,
     timeZoneOffsetMinutes: resolved.timeZoneOffsetMinutes,
+    timeZoneId: resolved.timeZoneId,
+    timeZonePrecision: resolved.timeZonePrecision,
   };
 };
 

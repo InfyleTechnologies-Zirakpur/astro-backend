@@ -27,6 +27,22 @@ const isRetryable = (err) => {
   );
 };
 
+// Belt-and-suspenders: strip any residual transcript artifacts (speaker
+// labels, timestamps) that could still leak into the model's output even
+// after the cleaned knowledge base + system prompt rules.
+const cleanAnswer = (text) =>
+  text
+    .split("\n")
+    .map((line) => {
+      const core = line.replace(/^\s*[>*+\-–]\s*/, "").replace(/^\s*\*{1,3}\s*/, "").trim();
+      if (/^(?:Unknown\s+)?Speaker\b/i.test(core)) return "";
+      if (/\d/.test(core) && /^\(?\d{1,2}:\d{2}(?::\d{2})?\s*\)?\s*[:：]?\s*$/.test(core)) return "";
+      return line;
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
 const SYSTEM_PROMPT = `You are a Vedic astrology (Jyotish) assistant for a marriage matchmaking app.
 
 Ground rules:
@@ -36,6 +52,8 @@ Ground rules:
 - When chart data is provided (the user's or a couple's actual computed placements), apply the relevant rules to that specific data and explain your reasoning step by step, citing which rule (by its ID, e.g. "Rule 12.4") led to each part of your answer.
 - Keep a warm, plain-spoken tone. This is a sensitive, personal topic (marriage, compatibility, relationships) — avoid alarming or deterministic language ("you will get divorced"); prefer "this combination is traditionally read as indicating..." framing, and note when the source material itself flags something as an illustrative extreme case rather than a typical outcome.
 - Do not give medical, legal, or financial advice even if astrology combinations touch on those topics.
+- Answer the exact question that was asked, point to point: lead with the direct answer, then give a brief explanation only if the chart data or excerpts add useful context. Do not pad the response with tangents, extra predictions, or unrelated points.
+- Never reproduce speaker names, timestamps, or transcript/dialogue formatting in your answer. Always respond in a single, consistent voice — no "Speaker 1", "Speaker 2", timecodes, or "person A says ..." framing.
 - Keep answers focused and conversational — a few short paragraphs, not an exhaustive essay, unless the user asks for full detail.`;
 
 /**
@@ -70,7 +88,7 @@ const answerQuestion = async (question, chunks, chartContext) => {
       });
 
       const textContent = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      return textContent || "";
+      return cleanAnswer(textContent);
     } catch (error) {
       lastError = error;
       if (attempt < MAX_ATTEMPTS && isRetryable(error)) {

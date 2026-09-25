@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const {
   ZODIAC_SIGN_NAMES,
-  getZodiacSign,
   calculateNatalChart,
   normalizeTimeOfBirth,
 } = require("../services/astrologyService");
@@ -40,6 +39,22 @@ const horoscopeSchema = new mongoose.Schema(
       min: -840,
       max: 840,
       default: 0,
+    },
+
+    // IANA timezone name (e.g. "America/New_York") that produced the stored
+    // offset, and how trustworthy that offset is:
+    //  - "historical": resolved from the exact birth moment's IANA history
+    //  - "current-estimate": fell back to today's offset (old/edge-case dates)
+    //  - "user": supplied directly by the user/app
+    timeZoneId: {
+      type: String,
+      trim: true,
+    },
+
+    timeZonePrecision: {
+      type: String,
+      enum: ["historical", "current-estimate", "user"],
+      default: "current-estimate",
     },
 
     placeOfBirth: {
@@ -114,12 +129,12 @@ horoscopeSchema.pre("validate", function computeCharts() {
   }
 
   if (this.dateOfBirth) {
-    this.sunSign = getZodiacSign(this.dateOfBirth);
     const chart = calculateNatalChart({
       dateOfBirth: this.dateOfBirth,
       timeOfBirth: this.timeOfBirth,
       timeZoneOffsetMinutes: this.timeZoneOffsetMinutes,
     });
+    this.sunSign = chart.sunSign;
     this.calculatedMoonSign = chart.moonSign;
     // Moon sign is calculated automatically from the exact birth time.
     this.moonSign = chart.moonSign;
