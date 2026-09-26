@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const response = await api.post('/admin/login', { email, password })
+    sessionStorage.setItem('adminToken', response.token)
     setUser(response.user)
     return response
   }
@@ -34,6 +35,7 @@ export const AuthProvider = ({ children }) => {
     } catch {
       // ignore
     }
+    sessionStorage.removeItem('adminToken')
     setUser(null)
   }
 

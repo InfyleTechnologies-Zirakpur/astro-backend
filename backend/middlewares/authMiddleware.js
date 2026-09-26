@@ -3,13 +3,17 @@ const User = require("../models/user");
 
 const protect = async (req, res, next) => {
   try {
-    let token = req.cookies && req.cookies.token;
+    let token;
 
-    if (!token && req.headers.authorization) {
+    if (req.headers.authorization) {
       const [scheme, value] = req.headers.authorization.split(" ");
       if (scheme === "Bearer" && value) {
         token = value;
       }
+    }
+
+    if (!token) {
+      token = req.cookies && req.cookies.token;
     }
 
     if (!token) {
