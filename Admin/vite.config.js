@@ -9,7 +9,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5001',
+        target: 'https://astro-backend-yvx5.onrender.com',
         changeOrigin: true,
         credentials: true,
       },

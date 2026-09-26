@@ -22,7 +22,11 @@ const navItems = [
 const Sidebar = () => (
   <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-slate-200 bg-white">
     <div className="flex h-16 items-center gap-2 border-b border-slate-200 px-5">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">A</div>
+      <img
+        src="/WhatsApp_Image_2026-09-23_at_1.22.22_PM-removebg-preview.png"
+        alt="Astro Admin logo"
+        className="h-8 w-8 object-contain"
+      />
       <span className="text-lg font-bold text-slate-900">Astro Admin</span>
     </div>
     <nav className="flex-1 space-y-1 overflow-y-auto p-3">

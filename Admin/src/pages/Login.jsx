@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const Login = () => {
@@ -31,9 +30,11 @@ const Login = () => {
     <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white">
-            <Sparkles className="h-5 w-5" />
-          </div>
+          <img
+            src="/WhatsApp_Image_2026-09-23_at_1.22.22_PM-removebg-preview.png"
+            alt="Astro Admin logo"
+            className="h-10 w-10 object-contain"
+          />
           <div>
             <h1 className="text-xl font-bold text-slate-900">Astro Admin</h1>
             <p className="text-sm text-slate-500">Sign in to the admin panel</p>
