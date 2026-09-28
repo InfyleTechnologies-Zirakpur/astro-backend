@@ -2,6 +2,34 @@ const {
   calculateNatalChart,
   calculateAstrologyCompatibility,
 } = require("./astrologyService");
+const { calculateVedicCompatibility } = require("./vedicCompatibilityService");
+
+/*
+ * The questionnaire-derived categories that make up the overall score.
+ *
+ * This is an explicit ALLOWLIST on purpose. The report object also carries
+ * optional, astrology-derived sections (`astrology`, `vedic`) which are only
+ * present when both partners have filed a horoscope. An earlier version
+ * aggregated `Object.values(report)`, which silently mixed those optional
+ * 0..1 sub-scores into the 0..100 average and moved the denominator from 11
+ * to 12 — so the same couple scored differently depending on whether they had
+ * a horoscope on file, and `overallLabel` thresholds shifted with it. An
+ * allowlist means any optional section added in future is excluded by default
+ * rather than silently corrupting the headline number.
+ */
+const SCORED_CATEGORY_KEYS = [
+  "personality",
+  "emotional",
+  "communication",
+  "trustAndCommitment",
+  "maturity",
+  "understanding",
+  "lifestyle",
+  "familyValues",
+  "careerAndFinance",
+  "relationshipExpectations",
+  "longTermPotential",
+];
 
 /*
  * Normalize questionnaire answers.
@@ -277,6 +305,8 @@ const calculateCompatibility = ({
   questionnaireB,
   horoscopeA,
   horoscopeB,
+  genderA,
+  genderB,
 }) => {
   const report = {
     personality: category(
@@ -411,9 +441,27 @@ const calculateCompatibility = ({
   }
 
   /*
-   * Calculate overall score.
+   * Vedic (sidereal) compatibility: Ashtakoot Guna Milan, sign matchmaking,
+   * and rule-engine findings. Additive and independent of the Western section
+   * above — a partner may be missing a Western chart but still have a sidereal
+   * one, and vice versa.
    */
-  const categories = Object.values(report);
+  const vedic = calculateVedicCompatibility({
+    horoscopeA,
+    horoscopeB,
+    genderA,
+    genderB,
+  });
+  if (vedic) report.vedic = vedic;
+
+  /*
+   * Calculate overall score.
+   *
+   * Scored strictly over SCORED_CATEGORY_KEYS — never over every key in
+   * `report`, because the optional astrology sections must not move the
+   * headline score (see the note on SCORED_CATEGORY_KEYS).
+   */
+  const categories = SCORED_CATEGORY_KEYS.map((key) => report[key]).filter(Boolean);
 
   const totalScore =
     categories.reduce((total, item) => total + item.score, 0) /
@@ -457,8 +505,14 @@ const calculateCompatibility = ({
 
   /*
    * Strengths and challenges.
+   *
+   * Scoped to the same questionnaire categories as the overall score. These are
+   * user-facing prose lines ("<key> shows strong alignment."), so listing an
+   * astrology section here would read as a questionnaire category and mislead.
    */
-  const strengths = Object.entries(report)
+  const scoredEntries = SCORED_CATEGORY_KEYS.map((key) => [key, report[key]]).filter(([, value]) => value);
+
+  const strengths = scoredEntries
     .filter(
       ([, value]) => value.level === "Very Compatible"
     )
@@ -466,7 +520,7 @@ const calculateCompatibility = ({
       ([key]) => `${key} shows strong alignment.`
     );
 
-  const potentialChallenges = Object.entries(report)
+  const potentialChallenges = scoredEntries
     .filter(
       ([, value]) => value.level === "Some Differences"
     )
@@ -490,4 +544,5 @@ const calculateCompatibility = ({
 
 module.exports = {
   calculateCompatibility,
+  SCORED_CATEGORY_KEYS,
 };

@@ -2896,3 +2896,184 @@ Verbatim-style extraction from the recorded class lecture (Sanjay Rath, Jaimini 
 - The lecture closes by tying the Moon to the spiritual path: the mind must be disciplined, the guru must be recognized, and the chart must be used as a guide to the right direction rather than as a detached technical exercise.
 
 ---
+
+# Astro Knowledge Base — Vargas and Kendra House Framework Lecture
+
+## 45. Vargas and Kendra House Framework — Lecture Excerpt
+
+The following entries summarize the lecturer's interpretive framework from the Vargas/Kendra lecture. Spiritual and astronomical explanations are attributed to the lecturer and should not be treated as universally accepted astrology or astronomy.
+
+**45.1 Kendra houses and the lecture's framework**
+- The four Kendra houses are the 1st, 4th, 7th, and 10th.
+- In the lecture's model, the 10th house represents the soul's entry into earthly life and its eventual departure; the 4th is paired with the 10th as a sustenance-related house.
+- The lecturer ranks Kendra strength in reverse house order: 10th, 7th, 4th, then 1st. This is presented as the lecture's rationale, not as a universal rule.
+
+**45.2 Brahma, Vishnu, Rudra, and their Devatas**
+- The lecture distinguishes a governing principle (tattva) from its associated Devata: Brahma is creation, Vishnu is sustenance, and Rudra is dissolution/death.
+- In the associations taught in this excerpt, Durga represents creation, Krishna represents sustenance, and Laya represents dissolution.
+- The lecture associates these principles with the 9th, 10th, and 11th houses respectively, using the phrases Nava Durga, Dasha Avatara, and Ekadasha Rudra.
+
+**45.3 House mapping after the described birth flip**
+- The lecturer describes a conceptual flip around the 1st–7th axis at birth: the 11th house maps to the 3rd, the 10th to the 4th, and the 9th to the 5th.
+- In this post-flip mapping, the lecture places Rudra in the 3rd, Vishnu/Krishna in the 4th, and Durga in the 5th; the 1st and 7th are said to remain fixed.
+- The lecturer links the flip to Rahu and to the difference between apparent motion and the underlying motion of the Sun. This is a metaphysical interpretation in the lecture, not a claim of physical solar retrograde motion.
+
+**45.4 Dharma, Artha, Kama, and Moksha sequence**
+- The lecture maps Dharma, Artha, Kama, and Moksha to houses 1, 10, 7, and 4, respectively.
+- It relates these houses to sunrise, midday, sunset, and midnight, and therefore characterizes this sequence as a Surya (Sun) principle.
+- The source presents this as the lecturer's framework; it is distinct from other house-sequence conventions.
+
+**45.5 Sun, nakshatra, and soul-entry interpretation**
+- The lecturer says the nakshatra occupied or traversed by the Sun has an awakened Devata and is associated with souls entering Bhuloka; the Sun's placement is used as one part of a proposed Dharma analysis.
+- The lecture also connects a name's first syllable to a rashi and suggests observing or worshipping a corresponding Devata when the Sun reaches that rashi.
+- These are devotional and interpretive teachings from the lecture, not independently verified timing or predictive rules.
+
+**45.6 Varga scope of this excerpt**
+- Although the lecture introduces basic definitions for Vargas, this excerpt focuses mainly on Kendra houses, the 9th–11th house sequence, and the Sun-based Dharma framework.
+- It does not provide specific divisional-chart calculation procedures or detailed interpretations for individual Vargas.
+
+---
+
+# Astro Knowledge Base - Navamsha, D1/D9/D60, and 9th House Lecture
+
+## 46. Navamsha, D1/D9/D60, and 9th House - Lecture Excerpt
+
+The following entries summarize the lecturer's methods and teaching guidance. Interpretations are attributed to the speaker and are not presented as universally accepted rules.
+
+**46.1 Focused questions and chart-study practice**
+- Keep questions specific, clearly state the problem, and stay within the class topic; when studying Navamsha, focus on its basic principles rather than unrelated questions.
+- The lecturer cautions that personal charts can introduce emotional bias, especially around painful life experiences. For practice, use a comparable chart that is not one's own, as a clinician would study a case without operating on themselves.
+- Learn and apply established concepts before naming yogas; describe the relevant house, lord, placement, and aspects precisely rather than relying on labels that have not yet been studied.
+
+**46.2 How D1, D9, and D60 are related in the lecture's method**
+- The lecturer says D1 and D9 operate together: D1 shows the manifested life/body, while D9 is described as a formative or filtering influence on D1. They are not treated as competing charts where one simply overrides the other.
+- D60 is used to examine past-life factors. In the lecturer's framework, how strongly those factors manifest depends partly on the condition and strength of the relevant planets in D9.
+- The speaker mentions D1, D3, and D9 as charts commonly read together, while this excerpt's worked method focuses on D1, D9, and D60.
+
+**46.3 Start the D1/D9/D60 review with the 9th lord**
+- The lecturer's first step is to identify the 9th lord in D1 and examine that planet in the Rashi, Navamsha (D9), and Shashtiamsha (D60) charts.
+- If more than one planet is treated as a 9th lord in the chart being analyzed, the lecturer says to assess each of them across the same charts.
+- The 9th house and its lord are treated in this lecture as central to Bhagya (fortune/destiny) and the transmission of past-life results.
+
+**46.4 Assess influences on the 9th house across charts**
+- Do not assess only the 9th-house occupant or lord: also identify planets influencing the 9th house, including graha drishti and rashi drishti, and assess the strength or degree of those influences where the system provides it.
+- The lecturer also checks the 8th and 10th houses for influences said to affect the 9th through papa or shubha yoga; in this framework, malefic pressure on the 9th can signify difficulty with fortune or destiny.
+- These are the speaker's interpretive rules. The excerpt does not establish them as consensus across Jyotish traditions.
+
+**46.5 Example interpretations of 8th-house influence on fortune**
+- The lecturer argues that an 8th-house planet should also be evaluated for its influence on the 9th house, rather than judged only by relationship or marriage topics.
+- In the examples given, Mercury in the 8th is described favorably for speaking appropriately and thereby supporting fortune, while Mars in the 8th is described as suppressing anger until it erupts and damages outcomes.
+- These examples are attributed to the lecturer and should be weighed with the complete chart, not applied as standalone outcomes.
+
+**46.6 Reading the 9th-house result as a combined picture**
+- Evaluate the 9th house, its lord, and all relevant planetary influences together across D1, D9, and D60; do not infer a chart-wide result from one placement or assume the divisional charts are in conflict.
+- The speaker presents this layered review as a way to judge how strongly fortune-related and past-life themes can manifest, while emphasizing analysis over memorized rules.
+
+---
+
+# Astro Knowledge Base - Sibling Order, Garbha-graha, and Last Rites Lecture
+
+## 47. Sibling Order, Garbha-graha, and Last Rites - Lecture Excerpt
+
+These entries summarize the speaker's Jyotish framework and practical thumb rules. They are attributed to the lecturer and should be read as interpretive claims, not guaranteed outcomes.
+
+**47.1 Third and 11th houses in sibling analysis**
+- The 3rd house is treated as the primary house for younger siblings and the 11th as the house for elder siblings.
+- Mars is identified as the natural Bratri karaka (significator) for siblings generally. The 3rd house, its lord, and Mars are examined for younger-sibling matters; the 11th house and its lord are examined for elder siblings.
+- In the lecture's framework, the 3rd lord protects younger siblings and the 11th lord protects elder siblings. Assess the relevant house, lord, and karaka together rather than relying on one placement.
+
+**47.2 Lecture thumb rules for identifying an eldest child**
+- The speaker associates Jupiter in the 11th, the 1st lord or 7th lord in the 11th, and a connection between the 1st lord and 11th lord with being the eldest child.
+- The lecture gives a gender-specific emphasis: the 7th lord in the 11th is used for eldest-child indications in a female chart, while the 11th lord in the 11th is used in a male chart.
+- Rahu or Ketu in the 11th is also mentioned as an eldest-child indication, with the 11th lord's placement described as a possible modifying factor.
+
+**47.3 Lecture thumb rules for youngest-child and sibling indications**
+- The speaker associates Ketu in the 3rd with loss or absence of younger siblings and with being the youngest child; a strong 3rd lord is said to modify the reading and may allow for sisters.
+- The 1st lord or 7th lord in the 3rd is also given as a youngest-child indication.
+- These are presented as thumb rules to test against the full chart and family history, not as conclusions from a single placement.
+
+**47.4 Garbha-graha pregnancy-order sequence**
+- The lecturer assigns a planet (called Garbha-graha or Garbhagraha in the transcript) to each pregnancy order: 1st Sun, 2nd Jupiter, 3rd Ketu, 4th Mercury, 5th Rahu, 6th Mars, 7th Saturn, 8th Moon, and 9th Venus.
+- The pregnancy count is said to follow the father's children, including children from different relationships, rather than counting only the children of the native's mother.
+- The speaker describes Garbha-graha as a creator-like influence, comparable in importance to the Lagna lord, and connects it to personality, fortune, and life outcomes. The sequence and interpretation are specific to this lecture's system.
+
+**47.5 How the lecture uses Garbha-graha**
+- After determining the pregnancy order and its Garbha-graha, assess that planet's condition and placement, including whether it is strong and placed in a Kendra or Kona, and consider its friends and enemies as described by the lecturer.
+- The lecture says the Garbha-graha should be examined early because it represents the pregnancy order and family context associated with the native's birth.
+- The speaker advises considering this planet when selecting remedies, but this is presented as the lecturer's method rather than a universal remedy rule.
+
+**47.6 Marana-graha as a companion to Garbha-graha**
+- The lecturer identifies a Marana-graha by counting seven positions through the planetary sequence from the Garbha-graha; for a first-born child, the example given is Sun as Garbha-graha and Saturn as Marana-graha.
+- The Marana-graha is associated in the lecture with adversity and loss. Its placement and house lordships are considered alongside the Garbha-graha, with the speaker using chart examples to discuss family, status, and relationship challenges.
+- The lecture cautions against judging a planet's result in isolation from the person's pregnancy order; these interpretations remain framework-specific and are not certain predictions.
+
+**47.7 Moon and performance of parents' last rites**
+- A lecture thumb rule states that Moon in the 1st, 2nd, 6th, 8th, or 10th house indicates that the native will perform the last rites of parents or elders.
+- If the Moon is outside those houses, the speaker says the native may not perform those rites.
+- This is an attributed astrological rule from the excerpt, not a reliable guarantee of future family events.
+
+---
+
+# Astro Knowledge Base - Arudha Lagna, Drekkana, and Siblings Lecture
+
+## 48. Arudha Lagna, Drekkana, and Sibling Analysis - Lecture Excerpt
+
+These entries summarize the lecturer's interpretive method. The birth-order and sibling predictions are framework-specific and should not be treated as certain outcomes.
+
+**48.1 Arudha as manifestation and social recognition**
+- The lecturer describes Arudha as what becomes visible or manifests in the world, beginning with public recognition of a birth and the question of the child's name.
+- In the lecture's metaphor, Arudha is the tree and attachments (bandhana) are its roots: relationships and social ties connect a person to worldly life.
+- The speaker uses Arudha Lagna (AL) to examine how the native recognizes and experiences siblings, in addition to using the natal houses for sibling analysis.
+
+**48.2 Sibling houses from Arudha Lagna**
+- Examine the 3rd and 11th houses from AL for younger- and elder-sibling connections, respectively; the lords of those houses are primary indicators of the siblings brought into the native's life.
+- Start with the relevant house lord before counting planets placed in the house. Then assess planets associated with or aspecting the lord, including their condition and the applicable graha or rashi drishti.
+- The lecture treats planets influencing the 3rd lord as possible sibling indicators. These show potential connections and should be checked against the actual family history and, where appropriate, Drekkanas.
+
+**48.3 Arudha Lagna and eldest/youngest birth-order convention**
+- The lecturer associates AL in Aries or Capricorn with being the eldest child, reasoning that the 12th house from either sign is ruled by Jupiter, the elder-sibling karaka in this system.
+- The opposite signs, Libra and Cancer, are associated with youngest-child indications. For an eldest person whose calculated AL is Libra, the speaker instructs students to use Aries for this birth-order-focused sibling analysis.
+- The lecturer also expects the Sun, described as the Garbha-graha for a first-born child, to be strong for the eldest-child indications to manifest well. These are rules specific to this teaching.
+
+**48.4 Using Drekkana to investigate a sibling's chart details**
+- The speaker raises using Parashara Drekkana (D3) to investigate a sibling's Moon sign or nakshatra, but cautions that this requires a strong connection in the chart; without such a connection, the sibling may not have a sufficiently strong karmic link for the method to provide detail.
+- D3 is used as a follow-up after identifying sibling indicators from AL, not as a substitute for examining the 3rd/11th houses and their lords.
+
+**48.5 Distinguish possible siblings from actual siblings**
+- Multiple planets influencing the 3rd lord can indicate several possible sibling connections, but the lecturer notes that chart indications do not necessarily all become actual siblings; the chart and known family history must be compared.
+- The examples use Sri Rama's chart to illustrate how the 3rd lord and influencing planets may be matched to known brothers, and Oprah Winfrey's chart to discuss full and half-sibling connections and difficult sibling experiences.
+- These named-chart examples illustrate the lecturer's method and should not be generalized into guaranteed predictions about sibling number, sex, health, or life events.
+
+---
+
+# Astro Knowledge Base - Advanced Arudha Sibling Indicators Lecture
+
+## 49. Advanced Arudha Sibling Indicators - Lecture Excerpt
+
+These entries summarize additional rules stated by the lecturer. In particular, claims about death, danger, or pregnancy loss are traditional astrological interpretations from the lecture and are not reliable predictions of individual events.
+
+**49.1 Sibling significators and Bratri marakas**
+- Mars is described as the natural Bratri karaka for siblings generally.
+- The lecturer identifies Venus, Rahu, and Saturn as Bratri marakas, or planets that can signify loss or serious difficulty involving siblings in this system.
+- Assess these planets' connections to the 3rd and 11th houses and their lords from both Arudha Lagna and natal Lagna: the 3rd relates to younger siblings and the 11th to elder siblings. Do not treat a maraka label alone as proof that a sibling will die.
+
+**49.2 Venus in the 8th from Arudha Lagna**
+- A specific lecture rule associates Venus in the 8th house from Arudha Lagna with a pregnancy lost before the native's birth; the speaker also mentions possible premature birth involving an older sibling.
+- The excerpt says to check this condition rather than assume it applies when Venus is elsewhere. This is an attributed, unverified rule and should not be used to predict pregnancy loss or medical outcomes.
+
+**49.3 Birth-order indications from house lords in Lagna**
+- The lecturer gives the 11th lord placed in Lagna as an eldest-child indication and the 3rd lord placed in Lagna as a youngest-child indication.
+- These are presented as birth-order indicators to combine with the AL sign, sibling houses, relevant lords, and known family structure; they are not conclusive on their own.
+
+**49.4 Sequential houses for elder siblings**
+- In the lecture's method, when examining older siblings from a native who is younger, the 11th house indicates the immediately older sibling, the 9th the next older, and the 7th the sibling before that.
+- The speaker uses the Rahu-Ketu axis as a possible stopping point in the sibling count. A strong Mercury or Jupiter is said to sometimes modify or extend that count.
+- For each indicated sibling, assess the relevant house lord and planets associated with it; distinguish the order of siblings from whether every potential indication corresponds to an actual sibling.
+
+**49.5 Cross-check sibling indications against the sibling's chart**
+- The lecturer compares sibling indicators in the native's chart with the known sibling's own chart, looking for connections between the sibling's Lagna and the signs or planets identified from the native's AL-based analysis.
+- This is used as corroboration of the proposed sibling relationship and chart interpretation, not as a stand-alone method for inferring a cause of death or other specific event.
+- The excerpt's cases involving bereavement and accidents are examples for classroom discussion; they do not establish a general predictive rule for those outcomes.
+
+---
+

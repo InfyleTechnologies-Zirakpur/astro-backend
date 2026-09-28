@@ -5,6 +5,7 @@ const {
   normalizeTimeOfBirth,
 } = require("../services/astrologyService");
 const { calculateVedicChart } = require("../services/vedicAstrologyService");
+const { buildVedicAnalysis } = require("../services/vedicAnalysisService");
 
 const horoscopeSchema = new mongoose.Schema(
   {
@@ -114,21 +115,44 @@ const horoscopeSchema = new mongoose.Schema(
     vedicChart: {
       type: mongoose.Schema.Types.Mixed,
     },
+
+    // --- Static Vedic analysis — derived, not authoritative on its own ---
+    // Output of buildVedicAnalysis: per-planet dignity/strength (rule 6.1),
+    // divisional signs, D1/D9 comparison (rule 14.9), the Moon's shadvarga
+    // check (rule 13.10), drishti, and conjunction groups.
+    //
+    // Kept separate from vedicChart because vedicChart's shape is consumed
+    // directly by the API and the QA context, and because every value here is
+    // STATIC — derived only from the birth instant. Time-dependent layers
+    // (dasha, transits) are computed on read and are deliberately NOT stored
+    // here, because a stored dasha would silently go stale.
+    //
+    // Each block carries its own provenance so the AI layer can distinguish
+    // corpus rules from standard convention.
+    vedicAnalysis: {
+      type: mongoose.Schema.Types.Mixed,
+    },
   },
   { timestamps: true }
 );
 
 horoscopeSchema.pre("validate", function computeCharts() {
+  let birthTimeIsValid = true;
+
   if (this.timeOfBirth) {
     const normalizedTime = normalizeTimeOfBirth(this.timeOfBirth);
     if (!normalizedTime) {
       this.invalidate("timeOfBirth", "timeOfBirth must be in h:mm AM/PM or HH:mm format");
+      // A malformed time is a typo, not missing data. Computing a chart anyway
+      // would produce a real-looking "no-birth-time" analysis built from a bad
+      // string, which is far more misleading than having nothing at all.
+      birthTimeIsValid = false;
     } else {
       this.timeOfBirth = normalizedTime;
     }
   }
 
-  if (this.dateOfBirth) {
+  if (this.dateOfBirth && birthTimeIsValid) {
     const chart = calculateNatalChart({
       dateOfBirth: this.dateOfBirth,
       timeOfBirth: this.timeOfBirth,
@@ -146,6 +170,13 @@ horoscopeSchema.pre("validate", function computeCharts() {
       timeZoneOffsetMinutes: this.timeZoneOffsetMinutes,
       latitude: this.latitude,
       longitude: this.longitude,
+    });
+
+    // The chart reports the exact instant it computed for, so the analysis reuses
+    // that rather than re-deriving a date that could silently disagree with it.
+    this.vedicAnalysis = buildVedicAnalysis({
+      chart: this.vedicChart,
+      utcDate: this.vedicChart?.birthInstant ? new Date(this.vedicChart.birthInstant) : null,
     });
   }
 });

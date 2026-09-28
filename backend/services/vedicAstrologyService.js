@@ -152,16 +152,32 @@ const getTrueNodeLongitude = (date) => {
 };
 
 // --- Planetary sidereal longitudes ---
-const getPlanetSiderealLongitudes = (date) => {
+const getTopocentricEclipticLongitude = (body, date, observer) => {
+  const equatorial = Astronomy.Equator(body, date, observer, true, true);
+  const ecliptic = Astronomy.RotateVector(Astronomy.Rotation_EQD_ECT(date), equatorial.vec);
+  return ((Math.atan2(ecliptic.y, ecliptic.x) * (180 / Math.PI)) % 360 + 360) % 360;
+};
+
+const getPlanetSiderealLongitudes = (date, observerLocation) => {
+  const hasObserver =
+    Number.isFinite(observerLocation?.latitude) && Number.isFinite(observerLocation?.longitude);
+  const observer = hasObserver
+    ? new Astronomy.Observer(observerLocation.latitude, observerLocation.longitude, 0)
+    : null;
   const bodies = { Sun: null, Moon: null, Mars: "Mars", Mercury: "Mercury", Jupiter: "Jupiter", Venus: "Venus", Saturn: "Saturn" };
   const tropical = {};
 
-  tropical.Sun = Astronomy.SunPosition(date).elon;
-  tropical.Moon = Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body.Moon, date, true)).elon;
+  tropical.Sun = observer
+    ? getTopocentricEclipticLongitude(Astronomy.Body.Sun, date, observer)
+    : Astronomy.SunPosition(date).elon;
+  tropical.Moon = observer
+    ? getTopocentricEclipticLongitude(Astronomy.Body.Moon, date, observer)
+    : Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body.Moon, date, true)).elon;
   for (const [name, bodyKey] of Object.entries(bodies)) {
     if (!bodyKey) continue;
-    const vec = Astronomy.GeoVector(Astronomy.Body[bodyKey], date, true);
-    tropical[name] = Astronomy.Ecliptic(vec).elon;
+    tropical[name] = observer
+      ? getTopocentricEclipticLongitude(Astronomy.Body[bodyKey], date, observer)
+      : Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body[bodyKey], date, true)).elon;
   }
 
   // Rahu (true node; mean node as a defensive fallback). Ketu = Rahu + 180.
@@ -177,7 +193,11 @@ const getPlanetSiderealLongitudes = (date) => {
   sidereal.Rahu = toSidereal(rahuTropical, date);
   sidereal.Ketu = (sidereal.Rahu + 180) % 360;
 
-  return { sidereal, nodeType }; // sidereal: { Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu } in sidereal degrees
+  return {
+    sidereal,
+    nodeType,
+    positionReference: observer ? "topocentric" : "geocentric",
+  }; // sidereal: { Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu } in sidereal degrees
 };
 
 // --- Navamsha (D9) sign for a given sidereal longitude ---
@@ -236,7 +256,10 @@ const calculateVedicChart = (birthData = {}) => {
   const utcDate = new Date(localMillis - (Number(timeZoneOffsetMinutes) || 0) * 60 * 1000);
   if (Number.isNaN(utcDate.getTime())) return { precision: "invalid" };
 
-  const { sidereal: planetLongitudes, nodeType } = getPlanetSiderealLongitudes(utcDate);
+  const { sidereal: planetLongitudes, nodeType, positionReference } = getPlanetSiderealLongitudes(
+    utcDate,
+    hasLocation ? { latitude, longitude } : null
+  );
   const moonNakshatra = getNakshatra(planetLongitudes.Moon);
 
   const planets = Object.fromEntries(
@@ -255,17 +278,24 @@ const calculateVedicChart = (birthData = {}) => {
     ])
   );
 
+  // The exact instant the chart was computed for. Returned so downstream
+  // consumers (strength, dasha, transits) reuse THIS date rather than
+  // recomputing it from birth data and risking a silent disagreement.
+  const birthInstant = utcDate.toISOString();
+
   if (!hasTime || !hasLocation) {
     return {
       precision: !hasTime ? "no-birth-time" : "no-birth-location",
       note: !hasTime
         ? "Ascendant and houses require an accurate birth time — none was provided, so only planetary sign placements (not houses) are available."
         : "Ascendant and houses require birth latitude/longitude — none was provided.",
+      birthInstant,
       planets,
       moonRashi: getRashi(planetLongitudes.Moon),
       moonNakshatra,
       ayanamshaUsed: getAyanamsha(utcDate),
       nodeType,
+      positionReference,
     };
   }
 
@@ -281,6 +311,7 @@ const calculateVedicChart = (birthData = {}) => {
 
   return {
     precision: "full",
+    birthInstant,
     ascendant: {
       longitude: ascendantLongitude,
       rashi: ascendantRashi,
@@ -300,6 +331,7 @@ const calculateVedicChart = (birthData = {}) => {
     ),
     ayanamshaUsed: getAyanamsha(utcDate),
     nodeType,
+    positionReference,
   };
 };
 
@@ -307,11 +339,20 @@ const calculateVedicChart = (birthData = {}) => {
 // its prompt (see services/rag/llmService.js). Only includes fields that
 // were actually computed — never fabricates missing data, so the LLM sees
 // an honest, partial picture rather than something that looks complete.
-const buildChartContextForQA = ({ chartA, chartB, gunaMilan } = {}) => {
+//
+// `analysisA` / `analysisB` are the SUMMARY forms from summarizeVedicAnalysis,
+// never the full vedicAnalysis block: the full one is far too large for a
+// prompt, and passing it raw would crowd out the retrieved knowledge the
+// answer is supposed to be grounded in.
+const buildChartContextForQA = ({ chartA, chartB, gunaMilan, dashaA, dashaB, analysisA, analysisB } = {}) => {
   const context = {};
   if (chartA) context.personA = chartA;
   if (chartB) context.personB = chartB;
   if (gunaMilan) context.gunaMilan = gunaMilan;
+  if (dashaA) context.dashaA = dashaA;
+  if (dashaB) context.dashaB = dashaB;
+  if (analysisA) context.analysisA = analysisA;
+  if (analysisB) context.analysisB = analysisB;
   return Object.keys(context).length ? context : null;
 };
 

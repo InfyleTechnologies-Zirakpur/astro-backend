@@ -16,6 +16,22 @@ const astrologySchema = new mongoose.Schema({
 	chartB: { type: mongoose.Schema.Types.Mixed },
 }, { _id: false });
 
+// Vedic (sidereal) report: Ashtakoot Guna Milan, sign matchmaking (Rule 2.2),
+// and the computable rule-engine findings. Free-form on purpose — every field
+// is an independently-typed object produced by vedicCompatibilityService, and
+// the shape differs by precision (a date-only chart still gets Guna Milan but
+// no ascendant-derived rules, so `available` is false and those keys are
+// absent rather than null). Declaring each nested object explicitly would mean
+// a migration every time the rule engine gains a finding.
+const vedicSchema = new mongoose.Schema({
+	available: { type: Boolean, default: false },
+	note: { type: String },
+	gunaMilan: { type: mongoose.Schema.Types.Mixed },
+	signCompatibility: { type: mongoose.Schema.Types.Mixed },
+	ruleEngineA: { type: mongoose.Schema.Types.Mixed },
+	ruleEngineB: { type: mongoose.Schema.Types.Mixed },
+}, { _id: false });
+
 const matchSchema = new mongoose.Schema({
 	userA: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
 	userB: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -39,6 +55,9 @@ const matchSchema = new mongoose.Schema({
 	longTermPotential: { type: categorySchema, required: true },
 	// Optional: only populated when both users have submitted a Horoscope.
 	astrology: { type: astrologySchema, required: false },
+	// Optional: same rule as above, but the sidereal/Vedic report. Runs
+	// alongside `astrology` rather than replacing it.
+	vedic: { type: vedicSchema, required: false },
 	strengths: { type: [String], default: [] },
 	potentialChallenges: { type: [String], default: [] },
 	recommendations: { type: [String], default: [] },

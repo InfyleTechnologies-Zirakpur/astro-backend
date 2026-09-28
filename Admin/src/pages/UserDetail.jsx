@@ -84,9 +84,12 @@ const UserDetail = () => {
               <Field label="Date of Birth" value={formatDate(horoscope.dateOfBirth)} />
               <Field label="Time of Birth" value={horoscope.timeOfBirth} />
               <Field label="Place of Birth" value={horoscope.placeOfBirth} />
-              <Field label="Sun Sign" value={horoscope.sunSign} />
-              <Field label="Moon Sign" value={horoscope.moonSign} />
+              <Field label="Tropical Sun" value={horoscope.sunSign} />
+              <Field label="Tropical Moon" value={horoscope.moonSign} />
+              <Field label="Vedic Ascendant" value={horoscope.vedicChart?.ascendant?.rashi} />
+              <Field label="Vedic Moon Rashi" value={horoscope.vedicChart?.planets?.Moon?.rashi} />
               <Field label="Nakshatra" value={horoscope.nakshatra} />
+              <Field label="Vedic position basis" value={horoscope.vedicChart?.positionReference} />
             </div>
           ) : (
             <EmptyState message="No horoscope data" />
