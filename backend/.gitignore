@@ -6,5 +6,5 @@ config/firebase-service-account.json
 firebase-service-account.json
 *.json
 
-mp4.py
-output.txt
+.mp4.py
+.output.txt
