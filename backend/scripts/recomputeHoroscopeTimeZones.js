@@ -7,7 +7,7 @@
 // a live network call (Nominatim + Open-Meteo) per horoscope, so it is slow
 // for large collections.
 //
-// Usage: node scripts/recomputeHoroscopeTimeZones.js
+// Usage: node scripts/recomputeHoroscopeTimeZones.js --confirm
 require("dotenv").config();
 const connectDB = require("../config/db");
 const Horoscope = require("../models/horoscope");
@@ -16,6 +16,10 @@ const { resolveBirthLocationFromPlace } = require("../services/birthLocationServ
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const run = async () => {
+  if (!process.argv.includes("--confirm")) {
+    throw new Error("Refusing to update stored charts without the --confirm flag");
+  }
+
   await connectDB();
 
   const horoscopes = await Horoscope.find();

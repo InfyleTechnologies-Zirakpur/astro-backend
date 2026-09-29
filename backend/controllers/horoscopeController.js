@@ -37,8 +37,30 @@ const hydrateBirthLocation = async (body) => {
   const place = body.birthPlace || body.placeOfBirth || body.place || "";
   const baseData = buildHoroscopeData(body);
 
-  // Explicit user-supplied offset bypasses geo-resolved data entirely.
-  // The user owns the value; we just record it as high-trust precision.
+  // A place determines its historical timezone. In particular, do not let a
+  // client default of 0 minutes turn local birth time into UTC.
+  if (place) {
+    const birthDate = body.birthDate || body.dateOfBirth;
+    const resolved = await resolveBirthLocationFromPlace(place, birthDate);
+    if (!resolved) {
+      const error = new Error("Could not resolve the birth place to coordinates and timezone. Please check the place name or provide a timezone offset manually.");
+      error.expose = true;
+      error.statusCode = 400;
+      throw error;
+    }
+
+    return {
+      ...baseData,
+      placeOfBirth: resolved.placeOfBirth,
+      latitude: resolved.latitude,
+      longitude: resolved.longitude,
+      timeZoneOffsetMinutes: resolved.timeZoneOffsetMinutes,
+      timeZoneId: resolved.timeZoneId,
+      timeZonePrecision: resolved.timeZonePrecision,
+    };
+  }
+
+  // With no place, allow a manually supplied offset and coordinates.
   if (body.timeZoneOffsetMinutes !== undefined && Number.isFinite(Number(body.timeZoneOffsetMinutes))) {
     baseData.timeZoneOffsetMinutes = Number(body.timeZoneOffsetMinutes);
     baseData.timeZonePrecision = "user";
@@ -46,29 +68,9 @@ const hydrateBirthLocation = async (body) => {
       baseData.latitude = Number(body.latitude);
       baseData.longitude = Number(body.longitude);
     }
-    return baseData;
   }
 
-  if (!place) return baseData;
-
-  const birthDate = body.birthDate || body.dateOfBirth;
-  const resolved = await resolveBirthLocationFromPlace(place, birthDate);
-  if (!resolved) {
-    const error = new Error("Could not resolve the birth place to coordinates and timezone. Please check the place name or provide a timezone offset manually.");
-    error.expose = true;
-    error.statusCode = 400;
-    throw error;
-  }
-
-  return {
-    ...baseData,
-    placeOfBirth: resolved.placeOfBirth,
-    latitude: resolved.latitude,
-    longitude: resolved.longitude,
-    timeZoneOffsetMinutes: resolved.timeZoneOffsetMinutes,
-    timeZoneId: resolved.timeZoneId,
-    timeZonePrecision: resolved.timeZonePrecision,
-  };
+  return baseData;
 };
 
 const createHoroscope = async (req, res, next) => {
@@ -171,4 +173,4 @@ const getMyDasha = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { createHoroscope, getMyHoroscope, updateHoroscope, getMyDasha };
+module.exports = { createHoroscope, getMyHoroscope, updateHoroscope, getMyDasha, hydrateBirthLocation };

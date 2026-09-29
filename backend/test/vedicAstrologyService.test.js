@@ -46,3 +46,20 @@ test("charts without coordinates are explicitly marked geocentric", () => {
   assert.equal(chart.positionReference, "geocentric");
   assert.equal(chart.precision, "no-birth-location");
 });
+
+test("Chandigarh birth details use IST for the ascendant and whole-sign houses", () => {
+  const chart = calculateVedicChart({
+    dateOfBirth: "2001-12-02",
+    timeOfBirth: "16:45",
+    timeZoneOffsetMinutes: 330,
+    latitude: 30.7333,
+    longitude: 76.7794,
+  });
+
+  assert.equal(chart.birthInstant, "2001-12-02T11:15:00.000Z");
+  assert.equal(chart.ascendant.rashi, "Taurus");
+  assert.equal(chart.planets.Sun.rashi, "Scorpio");
+  assert.equal(chart.planets.Sun.house, 7);
+  assert.equal(chart.planets.Moon.rashi, "Gemini");
+  assert.equal(chart.planets.Moon.house, 2);
+});
