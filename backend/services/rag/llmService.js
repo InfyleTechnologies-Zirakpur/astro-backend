@@ -4,12 +4,17 @@
 // chart data, not from the LLM's memory).
 
 const { GoogleGenAI } = require("@google/genai");
+const Groq = require("groq-sdk");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
 const MODEL = process.env.GOOGLE_MODEL || "gemini-3.6-flash";
+const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const groq = process.env.GROQ_API_KEY
+  ? new Groq({ apiKey: process.env.GROQ_API_KEY })
+  : null;
 const MAX_ATTEMPTS = 3;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -25,6 +30,11 @@ const isRetryable = (err) => {
       message
     )
   );
+};
+
+const isQuotaExceeded = (err) => {
+  const message = String(err?.message || err?.error?.message || "");
+  return /quota exceeded|exceeded your current quota|RESOURCE_EXHAUSTED|rate limit/i.test(message);
 };
 
 // Belt-and-suspenders: strip any residual transcript artifacts (speaker
@@ -56,14 +66,7 @@ Ground rules:
 - Never reproduce speaker names, timestamps, or transcript/dialogue formatting in your answer. Always respond in a single, consistent voice — no "Speaker 1", "Speaker 2", timecodes, or "person A says ..." framing.
 - Keep answers focused and conversational — a few short paragraphs, not an exhaustive essay, unless the user asks for full detail.`;
 
-/**
- * @param {string} question - the end user's question
- * @param {Array<{id, title, section, text}>} chunks - retrieved knowledge base excerpts
- * @param {object} [chartContext] - optional computed Vedic chart data (from vedicAstrologyService)
- *   e.g. { personA: {...}, personB: {...}, gunaMilan: {...} }
- * @returns {Promise<string>} the model's answer
- */
-const answerQuestion = async (question, chunks, chartContext) => {
+const buildPrompt = (question, chunks, chartContext) => {
   const excerptsText = chunks.length
     ? chunks
         .map((chunk) => `[Rule ${chunk.id} — ${chunk.title}]\n${chunk.text}`)
@@ -74,7 +77,34 @@ const answerQuestion = async (question, chunks, chartContext) => {
     ? `\n\nChart data:\n${JSON.stringify(chartContext, null, 2)}`
     : "";
 
-  const userMessage = `Question: ${question}\n\nKnowledge base excerpts:\n${excerptsText}${chartText}`;
+  return `Question: ${question}\n\nKnowledge base excerpts:\n${excerptsText}${chartText}`;
+};
+
+const answerWithGroq = async (userMessage) => {
+  if (!groq) return null;
+
+  const response = await groq.chat.completions.create({
+    model: GROQ_MODEL,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: userMessage },
+    ],
+  });
+
+  const textContent = response.choices?.[0]?.message?.content || "";
+  if (!textContent.trim()) throw new Error("Groq returned an empty response");
+  return cleanAnswer(textContent);
+};
+
+/**
+ * @param {string} question - the end user's question
+ * @param {Array<{id, title, section, text}>} chunks - retrieved knowledge base excerpts
+ * @param {object} [chartContext] - optional computed Vedic chart data (from vedicAstrologyService)
+ *   e.g. { personA: {...}, personB: {...}, gunaMilan: {...} }
+ * @returns {Promise<string>} the model's answer
+ */
+const answerQuestion = async (question, chunks, chartContext) => {
+  const userMessage = buildPrompt(question, chunks, chartContext);
 
   let lastError;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -91,11 +121,19 @@ const answerQuestion = async (question, chunks, chartContext) => {
       return cleanAnswer(textContent);
     } catch (error) {
       lastError = error;
-      if (attempt < MAX_ATTEMPTS && isRetryable(error)) {
+      if (attempt < MAX_ATTEMPTS && isRetryable(error) && !isQuotaExceeded(error)) {
         await sleep(1000 * attempt * 2);
         continue;
       }
       break;
+    }
+  }
+
+  if (groq && (isRetryable(lastError) || isQuotaExceeded(lastError))) {
+    try {
+      return await answerWithGroq(userMessage);
+    } catch (groqError) {
+      lastError = groqError;
     }
   }
 
