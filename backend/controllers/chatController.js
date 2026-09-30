@@ -38,6 +38,12 @@ const broadcastMessage = (matchId, message) => {
   if (io) io.to(`match:${matchId}`).emit("chat:message", message);
 };
 
+const restoreChatForParticipants = (match) =>
+  Match.updateOne(
+    { _id: match._id },
+    { $pullAll: { hiddenFor: [match.userA, match.userB] } }
+  );
+
 const getMessageAsParticipant = async (messageId, userId) => {
   if (!mongoose.isValidObjectId(messageId)) return { error: "Invalid messageId", status: 400 };
   const message = await Message.findById(messageId);
@@ -106,6 +112,7 @@ const sendMessage = async (req, res, next) => {
     const blockReason = blockedMessageReason(text);
     if (blockReason) return res.status(400).json({ success: false, message: blockReason });
 
+    await restoreChatForParticipants(result.match);
     const message = await Message.create({
       match: result.match._id,
       sender: req.user._id,
@@ -138,6 +145,7 @@ const sendStickerMessage = async (req, res, next) => {
     const text = typeof req.body.text === "string" ? req.body.text.trim() : "";
     if (!text || text.length > 200) return res.status(400).json({ success: false, message: "Sticker is invalid" });
 
+    await restoreChatForParticipants(result.match);
     const message = await Message.create({
       match: result.match._id,
       sender: req.user._id,
@@ -176,6 +184,7 @@ const sendMediaMessage = async (req, res, next) => {
     const mediaUrl = uploadResult.secure_url;
     const cloudinaryPublicId = uploadResult.public_id;
 
+    await restoreChatForParticipants(result.match);
     const message = await Message.create({
       match: result.match._id,
       sender: req.user._id,
@@ -240,6 +249,19 @@ const deleteMessageForEveryone = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+const deleteChat = async (req, res, next) => {
+  try {
+    const result = await getParticipantMatch(req.params.matchId, req.user._id);
+    if (result.error) return res.status(result.status).json({ success: false, message: result.error });
+
+    await Promise.all([
+      Match.updateOne({ _id: result.match._id }, { $addToSet: { hiddenFor: req.user._id } }),
+      Message.updateMany({ match: result.match._id }, { $addToSet: { deletedFor: req.user._id } }),
+    ]);
+    res.json({ success: true, message: "Chat deleted for you", data: { matchId: result.match._id } });
+  } catch (error) { next(error); }
+};
+
 const markMessagesRead = async (req, res, next) => {
   try {
     const result = await getParticipantMatch(req.params.matchId, req.user._id);
@@ -259,6 +281,7 @@ module.exports = {
   sendMessage,
   sendStickerMessage,
   sendMediaMessage,
+  deleteChat,
   deleteMessageForMe,
   deleteMessageForEveryone,
   markMessagesRead,

@@ -139,7 +139,10 @@ const getMatch = async (req, res, next) => {
 const getMyMatches = async (req, res, next) => {
   try {
     const { page, limit, skip } = parsePagination(req.query);
-    const filter = { $or: [{ userA: req.user._id }, { userB: req.user._id }] };
+    const filter = {
+      $or: [{ userA: req.user._id }, { userB: req.user._id }],
+      hiddenFor: { $nin: [req.user._id] },
+    };
     const [matches, total] = await Promise.all([
       Match.find(filter).populate("userA", "name gender").populate("userB", "name gender").sort({ score: -1, updatedAt: -1 }).skip(skip).limit(limit),
       Match.countDocuments(filter),

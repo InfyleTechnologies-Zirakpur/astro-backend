@@ -1,5 +1,11 @@
 const Profile = require("../models/profile");
 const User = require("../models/user");
+const Match = require("../models/match");
+const Message = require("../models/message");
+const Questionnaire = require("../models/questionnaire");
+const Horoscope = require("../models/horoscope");
+const AstroConversation = require("../models/astroConversation");
+const DeviceToken = require("../models/deviceToken");
 const { uploadProfilePhoto: uploadProfilePhotoToCloudinary, deleteMedia, extractPublicIdFromUrl } = require("../config/cloudinary");
 
 const MAX_PHOTOS = 6;
@@ -139,4 +145,41 @@ const getProfileById = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { createProfile, getMyProfile, updateProfile, uploadProfilePhoto, deleteProfilePhoto, setPrimaryPhoto, getProfileById, serializeProfile, MAX_PHOTOS };
+const deleteProfile = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+
+    const profile = await Profile.findOne({ user: userId });
+    if (profile) {
+      const photos = Array.isArray(profile.photos) ? profile.photos.filter(Boolean) : [];
+      if (profile.profilePhoto) photos.push(profile.profilePhoto);
+      
+      for (const photoUrl of photos) {
+        const publicId = extractPublicIdFromUrl(photoUrl);
+        if (publicId) await deleteMedia(publicId, "image").catch(() => {});
+      }
+    }
+
+    await Promise.all([
+      Profile.deleteMany({ user: userId }),
+      Questionnaire.deleteMany({ user: userId }),
+      Horoscope.deleteMany({ user: userId }),
+      AstroConversation.deleteMany({ user: userId }),
+      DeviceToken.deleteMany({ user: userId }),
+      Message.deleteMany({ sender: userId }),
+      Match.deleteMany({ $or: [{ userA: userId }, { userB: userId }] }),
+    ]);
+
+    await User.findByIdAndDelete(userId);
+
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    });
+
+    res.json({ success: true, message: "Account and all associated data deleted" });
+  } catch (error) { next(error); }
+};
+
+module.exports = { createProfile, getMyProfile, updateProfile, uploadProfilePhoto, deleteProfilePhoto, setPrimaryPhoto, getProfileById, deleteProfile, serializeProfile, MAX_PHOTOS };

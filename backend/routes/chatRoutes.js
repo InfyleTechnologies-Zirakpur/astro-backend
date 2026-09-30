@@ -7,6 +7,7 @@ const {
   sendMessage,
   sendStickerMessage,
   sendMediaMessage,
+  deleteChat,
   deleteMessageForMe,
   deleteMessageForEveryone,
   markMessagesRead,
@@ -37,6 +38,7 @@ const uploadChatMediaFile = multer({
 const router = express.Router();
 router.use(protect);
 router.get("/history", getChatHistory);
+router.delete("/:matchId", deleteChat);
 router.get("/:matchId/messages", getMessages);
 router.post("/:matchId/messages", sendMessage);
 router.post("/:matchId/media", uploadChatMediaFile.single("message"), sendMediaMessage);

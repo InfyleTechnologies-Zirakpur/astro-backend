@@ -106,6 +106,10 @@ const setupChatSockets = (io) => {
         const blockReason = blockedMessageReason(cleanText);
         if (blockReason) return acknowledge({ success: false, message: blockReason });
 
+        await Match.updateOne(
+          { _id: match._id },
+          { $pullAll: { hiddenFor: [match.userA, match.userB] } }
+        );
         const message = await createMessage(match, socket.user._id, cleanText);
         io.to(`match:${matchId}`).emit("chat:message", message);
 

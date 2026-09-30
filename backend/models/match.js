@@ -38,6 +38,7 @@ const matchSchema = new mongoose.Schema({
 	status: { type: String, enum: ["pending", "accepted", "rejected"], default: "pending", required: true },
 	requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
 	requestedTo: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+	hiddenFor: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 	respondedAt: { type: Date, default: null },
 	overallLabel: { type: String, required: true },
 	score: { type: Number, required: true, default: 0, min: 0, max: 100 },

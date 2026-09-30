@@ -1,7 +1,7 @@
 const express = require("express");
 const multer = require("multer");
 const { protect } = require("../middlewares/authMiddleware");
-const { createProfile, getMyProfile, updateProfile, uploadProfilePhoto, deleteProfilePhoto, setPrimaryPhoto, getProfileById } = require("../controllers/profileController");
+const { createProfile, getMyProfile, updateProfile, uploadProfilePhoto, deleteProfilePhoto, setPrimaryPhoto, getProfileById, deleteProfile } = require("../controllers/profileController");
 
 const storage = multer.memoryStorage();
 
@@ -24,4 +24,5 @@ router.post("/photo", uploadProfilePhotoFile.fields([{ name: "photo", maxCount: 
 router.delete("/photo", deleteProfilePhoto);
 router.post("/photo/primary", setPrimaryPhoto);
 router.get("/user/:userId", getProfileById);
+router.delete("/", deleteProfile);
 module.exports = router;
