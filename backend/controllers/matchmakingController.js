@@ -155,8 +155,15 @@ const getMyMatches = async (req, res, next) => {
 const getRecommendations = async (req, res, next) => {
   try {
     const { page, limit, skip } = parsePagination(req.query);
-    const [myProfile, myQuestionnaire, myHoroscope, myUser] = await Promise.all([
-      ...getCompatibilityInputs(req.user._id),
+    // `getCompatibilityInputs` is async, so it returns a Promise that resolves
+    // to [profile, questionnaire, horoscope]. It has to be awaited as a nested
+    // element of Promise.all — spreading it (`...getCompatibilityInputs(...)`)
+    // throws "not a function or its return value is not iterable", which
+    // failed EVERY recommendations request with a 500 before this line even
+    // reached the setup check below, so a complete profile and questionnaire
+    // still showed no matches. Same pattern as calculateMatch above.
+    const [[myProfile, myQuestionnaire, myHoroscope], myUser] = await Promise.all([
+      getCompatibilityInputs(req.user._id),
       User.findById(req.user._id).select("gender").lean(),
     ]);
     if (!myProfile?.profileCompleted || !myQuestionnaire?.isComplete()) {
