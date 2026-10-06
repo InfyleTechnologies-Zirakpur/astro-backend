@@ -3077,3 +3077,250 @@ These entries summarize additional rules stated by the lecturer. In particular, 
 
 ---
 
+# Astro Knowledge Base - Graha Lagna and Related Lecture Material
+
+## 51. Graha Lagna, Achadana, and Relationship-Field Concepts - Lecture Excerpt
+
+These entries summarize a lecture-specific framework for interpreting planets through their own Lagna or Graha Lagna. The lecture presents educational, spiritual, and domestic applications; these are framework concepts rather than universally established astrological rules.
+
+**51.1 Graha Lagna as the planet's personal field**
+- Each planet is described as having its own Lagna, or a personal field of expression, through which the planet's signification is activated.
+- Graha Lagna is used to examine how a planet relates to society, its particular sphere of life, and the native's experience of that planet's function.
+- The lecture does not define a single fixed Graha Lagna method; it treats the planet's own Lagna and its house relationships as a practical interpretive tool.
+
+**51.2 Achadana as heart-desire, not ordinary aspect**
+- The lecturer uses "Achadana" for the planet's inner desire or heart-driven direction, distinct from a conventional aspect.
+- A planet's Achadana is read from the house in which that planet's signification is activated, with the relevant sign and house using the planet's own perspective rather than a generic house count.
+- For example, Venus's Achadana is linked to the 5th house from Venus, where the lecturer associates love, adoration, and child-related fulfillment.
+- A planet's heart-desire should be assessed alongside actual planetary placement, aspect, strength, and the house lordship context; it is not by itself a deterministic prediction.
+
+**51.3 Ketu's reverse house counting**
+- The lecture states that Ketu reverses ordinary house counting, so houses are counted in the opposite direction when examining Ketu's significations.
+- This is presented as a directional or symbolic method for identifying Ketu's field of interest, not as a substitute for standard chart calculation.
+- Rahu is distinguished from Ketu by being associated with bhoga or worldly experience, while Ketu is presented as a spiritually oriented or detached influence.
+
+**51.4 Grahana Yoga and eclipse-style connections**
+- The lecture gives the Moon-Ketu combination as an example of Grahana Yoga, and Moon with Ketu is also associated with a conflict between emotional disposition and spiritual or unconventional direction.
+- The same framework also treats Sun-Rahu as an eclipse-like combination, though the lecture's examples do not establish a general rule for every Sun-Rahu chart.
+- The presence of an eclipse-style association is interpreted as a major activating pattern, but its positive or negative manifestation must be checked against the houses, strength, and surrounding planetary relations.
+
+**51.5 Lagna as intelligence and the creator's field**
+- The lecturer identifies Lagna as the native's intelligence, clarity, and inner capacity for self-directed action.
+- Lagna is described as the point where the sky/father-like principle and earth/mother-like principle meet, and therefore as a source of birth-identity and self-expression.
+- The sign containing the Lagna is treated as the native's primary life-sign or Dhatrikshya, but this is a symbolic framework rather than a universal rule for personality or destiny.
+
+**51.6 The Sun-Venus distinction in marriage**
+- The lecturer distinguishes the 7th house from the Sun as a dharma-oriented or spiritually structured marriage field, and the 7th house from Venus as a kama-oriented or love/relationship field.
+- When Sun and Venus are associated in the chart, the Sun's and Venus's seventh houses can become closely related, producing a combined dharma-and-desire framework for marriage.
+- A marriage that is activated through the Sun's seventh house is described as a dharma-oriented marriage, while a marriage activated primarily through Venus's seventh house is described as a love-oriented or desire-oriented relationship.
+- The lecture identifies the Sun as the source of vision and direction and Venus as the field of attraction, affection, and relationship desire; these functions should be combined with the actual 7th house, its lord, and the spouse's chart rather than read in isolation.
+
+**51.7 Practical interpretation rule**
+- Graha Lagna, Achadana, and house-counting interpretations should be applied only after checking the native's actual planetary placements, aspects, strengths, divisional charts, and relevant family or relationship context.
+- The lecture's symbolic language should not be used to claim that a person has a particular outcome, medical condition, or social event without corroborating chart evidence and the stated caveats.
+
+---
+
+# Astro Knowledge Base - Vishad Dada Lecture
+
+## 50. Vishad Dada, Garuda, and Poison-Generation Concepts - Lecture Excerpt
+
+These entries summarize a lecture-specific interpretive framework. The lecturer's metaphor of poison, snake energy, and Garuda is part of a traditional astrology teaching and is not a diagnosis, medical treatment, or reliable prediction of disease, death, or disaster.
+
+**50.1 Vishad Dada as a dangerous Panchanga combination**
+- The lecture identifies **Vishad Dada** as a dangerous Panchanga combination involving the Tithi Lord and Rahu.
+- Its central idea is that Rahu's snake-like poison enters the Tithi Lord, causing a poisonous or toxic influence associated with the day and Tithi combination.
+- The teacher says the combination should be checked through the relevant Vara, Tithi, and the planetary relationships involved; it is presented as a risk-pattern assessment, not a guaranteed outcome.
+- The teacher's examples are one-off case studies and should not be used to infer that every chart with the combination will suffer disease or early death.
+
+**50.2 Garuda as the remedy symbol**
+- The lecture frames Garuda as the remover of poison and the eater of snakes; this is used as a symbolic remedy against the illustrated Visha pattern.
+- The practical method is to concentrate on the forehead, then visualize Garuda moving from the forehead toward the Anahata chakra, with the beak at the center, one wing on the right, and one on the left.
+- The speaker associates the right wing with the sound "Ham" and the left wing with "Sham," using the mantra sequence, "Om, Ham, Om, Ham, Sham, Om, Ham, Sham, Om, Ham, Sham."
+- The teacher then combines Garuda's name with the same mantra and says that Garuda is invoked to descend and remove the poisonous influence.
+- This should be treated as a devotional or symbolic practice; it is not a substitute for medical care.
+
+**50.3 Mantra for protective meditation**
+- The lecture gives a meditation mantra: "Om Pakshi Swaha," repeated three times after a nightmare or harmful dream.
+- The teacher also gives a more active activation mantra: "Om Rim, Ram, Rim, Barundaya Swaha," to be recited 100,000 times for a full activation.
+- A shorter repetition may be used as a devotional practice, but the teacher's stated target of 100,000 repetitions is not a scientifically established requirement.
+- The mantra is intended as an aid to concentration and devotion within this teaching; it does not neutralize toxins, cure illness, or replace professional treatment.
+
+**50.4 Tithi Lord and poisoned energy**
+- In the lecture, the Tithi Lord is the main point of accumulation for the poison.
+- The teacher identifies the following poison-producing Tithi Lords by weekday:
+  - Sunday: Mercury as the poisonous Tithi Lord for Chaturthi.
+  - Monday: Venus as the poisonous Tithi Lord for Shashti.
+  - Tuesday: Mars as the poisonous Tithi Lord for Saptami.
+  - Wednesday: Mercury associated with the Moon's poison-related emotional suffering.
+  - Thursday: Jupiter associated with Rahu-related deception and poison.
+  - Friday: Sun associated with Venus-related reproductive activity, which the lecturer describes as generating conflict with the Sun.
+  - Saturday: Saturn associated with the poison-producing combination involving the relevant Tithi.
+- The same Tithi may be examined through the Tithi Lord, the weekday lord, and the relevant house placements. A planetary relationship alone does not establish that a person will experience a specified disease.
+
+**50.5 Rahu, Ketu, and the body**
+- Rahu is treated as the primary source of the poison in this framework, while Ketu is the impulse that removes or releases the poisonous influence.
+- Retrograde planetary influence is interpreted as reversing ordinary behavior and making the inner world feel worse than the outer world.
+- The lecture links this reversal with the body's natural elimination systems: urine, stool, sweat, breath, and skin.
+- When the body's waste or toxic material is not released, it is described metaphorically as internal poison; this interpretation is not a medical diagnosis.
+- The lecture also teaches that Rahu and Ketu's placement, aspect, or exchange can create a destructive or protective pattern depending on the surrounding chart.
+
+**50.6 Snake kings to be propitiated**
+- The lecture names eight Naga kings associated with the planets and Tithi lords:
+  - Sun: Ashta Naga
+  - Moon: Vasuki
+  - Mars: Takshaka
+  - Mercury: Karkotaka
+  - Jupiter: Padma Naga
+  - Venus: Mahapadma
+  - Saturn: Sankhapala
+  - Rahu: Kulika or another suitable serpent-related king, depending on the teacher's presentation
+- The speaker instructs the native to identify the poison-producing Tithi Lord and then worship the corresponding Naga king, or alternatively pray to Garuda to remove the serpent energy.
+- The worship of a particular Naga should not be treated as a substitute for professional medical or psychological care.
+
+**50.7 Chart examples and their interpretive themes**
+- The lecture gives an example of a Wednesday-born person with Mercury as Vara Lord and Moon as Tithi Lord, where Rahu, Saturn, and the fourth house are used to discuss serious recurring illness, hepatitis, appendicitis, scarlet fever, pneumonia, spinal meningitis, and polio.
+- A second example concerns Jack London, whose chart is described as containing Rahu, Mars, and a Moon-related disease pattern. The lecture interprets his raw-meat diet, mental disturbance, house fire, and drug overdose as evidence of a Visha Dada pattern.
+- A third example concerns the opening of the World Trade Center and the twin-aircraft attack. The speaker identifies the Moon, Rahu, Ketu, Mars, the 5th house, the 7th Lord, and a nodal reversal as the main chart indicators.
+- The speaker describes the attack as a result of the poisonous pattern and the failure of protective energy.
+- These examples illustrate the lecturer's symbolic reading, not a scientifically validated forecasting method.
+
+**50.8 Nodal reversal and Kartari-style pressure**
+- The speaker uses the term **nodal reversal** for a condition in which Rahu and Ketu exchange or strongly activate their positions in a way that is described as karmic pressure or an ending or beginning of a dangerous cycle.
+- The lecture also describes a Kartari-style squeeze involving neighboring signs and planets, including Moon-Ketu and Sun-Rahu combinations.
+- In this framework, an eclipse-like influence is not limited to a literal solar or lunar eclipse; it may be interpreted as a major disturbance affecting the sign in the middle of the planetary arrangement.
+- The teacher's timing examples use 12-, 24-, and 36-year cycles, but these are lecture-specific and not established astrological forecasts.
+
+**50.9 Vishad Dada as a decision-making framework**
+- If the Visha pattern is present and already active, the lecture recommends Shiva-centered prayer and removal of poisonous influence.
+- If the pattern has not yet activated, the lecture recommends Garuda prayer, Naga worship, and repeated mantra practice.
+- The source does not provide a validated method for classifying whether a person is medically at risk from a horoscope alone.
+- Any person with recurrent illness, unexplained symptoms, severe pain, breathing difficulty, or sudden neurological changes should seek qualified medical help regardless of astrological interpretation.
+
+**50.10 Practical note for knowledge-base use**
+- When answering questions, distinguish between a chart's described **poison-generating pattern**, the lecturer's **symbolic remedy**, and the native's actual health status.
+- Do not present the suggested mantra or planetary associations as a cure or guarantee.
+- Before giving any healing advice, ask the user whether they are seeking astrological interpretation or medical guidance.
+- If the user describes symptoms or a health emergency, prioritize immediate medical or emergency assistance.
+
+---
+
+# Astro Knowledge Base - Advanced Arudha Lagna and Death-Circumstance Lecture
+
+## 52. Advanced Arudha Lagna, Fear of Death, and Material-Manifestation Concepts - Lecture Excerpt
+
+These entries summarize a lecture-specific Arudha Lagna framework. The lecturer's causal and body-part interpretations are framework-specific and should be combined with actual chart evidence; they are not established medical or deterministic predictions.
+
+**52.1 Arudha Lagna as the reflected image of the Lagna**
+- Arudha Lagna (AL) is described as the reflected image or manifested image of the native's Lagna.
+- It is used to identify how the native is perceived, how responsibilities and circumstances are manifested, and which life-stage or role becomes prominent.
+- The lecturer identifies the AL as a practical field for examining birth-order, household role, social image, source of income, and life-stage changes.
+
+**52.2 Arudha Lagna and the house-axis method**
+- The first house from AL is the primary life-image or principal manifested role; the seventh house from AL is the corresponding door, field of contact, or social counterpart.
+- The first and seventh houses from AL are treated as complementary and should be assessed together when determining a role, relationship, or life direction.
+- A strong AL image is not the same as a strong AL seventh-house relationship; the houses may pull in different directions when their lords or planets differ.
+
+**52.3 Choosing between two Arudha Lagna lords**
+- In a dual-Lagna condition, first identify the two possible AL lords and compare their strength using dignity, planetary condition, association, placement, and relevant planetary relationships.
+- The stronger lord is treated as the primary AL or dominant AL for the relevant life stage.
+- The weaker lord is not discarded; it may represent a secondary or later-activating image, especially when comparable planets or life circumstances support it.
+
+**52.4 Arudha Lagna can shift or cycle in time**
+- The lecturer describes AL as capable of shifting from one dominant image to another across life stages.
+- A person may initially manifest through one AL and later through another, particularly when the initial AL is less supported or the stronger AL becomes dominant later.
+- The shift is not assumed automatically from a dual-Lagna calculation; it must be confirmed through the relevant planetary timing, age, activism, and life events.
+
+**52.5 Birth-order interpretation from Arudha Lagna**
+- A native whose AL is Aries or Capricorn may be interpreted as the eldest child, based on the lecturer's convention that the 12th house from either sign is linked to the elder-sibling role.
+- A native whose AL is Libra or Cancer may be interpreted as the youngest child, with the opposite sign used for the relevant sibling analysis when the initial interpretation is inconsistent.
+- Birth order should be checked against actual family structure, the relevance of the house lords, and whether the native is actually assuming the role associated with that AL.
+
+**52.6 The 11th house from Arudha Lagna as the source-of-income house**
+- The 11th house from AL is treated as a primary source-of-income house when assessing material manifestation.
+- The planets placed there, the 11th-house lord, related drishti, and the planetary source represented by those factors should be used to identify the native's income pathways.
+- A planet's placement in the 11th from AL does not by itself prove that income will be earned; the planet must be applied to the actual occupation, timing, and known life circumstances.
+
+**52.7 11th-house interpretation of planetary sources**
+- A benefic planet in the 11th from AL generally indicates a relatively favorable or principled source of income.
+- A malefic planet there can indicate a difficult, questionable, harsh, or legally or morally risky source of income.
+- A mixed pattern indicates a source that may involve both favorable and unfavorable elements; the specific planet, house, and associated work must be examined before concluding what is represented.
+
+**52.8 The 11th house from the dominant Arudha Lagna**
+- When two ALs are in competition, the stronger AL's 11th house is the first field to examine for the native's principal income source.
+- The weaker AL's 11th house may still show secondary, earlier, or later income sources, especially where the corresponding role or life stage is known.
+- The lecturer's examples show that income sources can appear to shift when a different AL or different planetary lord becomes dominant.
+
+**52.9 The 3rd house from Arudha Lagna and death circumstances**
+- The 3rd house from AL is used to examine circumstances of death, illness, accident, disease, drowning, or other life-threatening events.
+- The lecturer describes this as a reflected or secondary death-circumstance house, not as a certainty about the exact cause or date of death.
+- The planet occupying the 3rd from AL, its lord, and any drishti to that house should be assessed with the body-part and house-signification framework rather than treated as direct medical diagnosis.
+
+**52.10 Reason of death from the 3rd house**
+- A planet placed in the 3rd from AL can point to the kind of circumstance associated with the death event, including disease, injury, or another life-threatening cause.
+- The 3rd from AL is assessed alongside the native's actual health history, the relevant body's system, and the dashas or transits activating the house.
+- The lecturer's use of the word "circumstance" is intended as an interpretive category, not a prediction that the native will die in a specified way.
+
+**52.11 Maanas or heart body-part activity from Arudha Lagna**
+- The lecturer associates the first, third, and seventh houses from the AL with specific body-part or physiological areas, including the chest and thoracic region.
+- The relevant house is considered through the planet representing the area, not by treating a house alone as a medical diagnosis.
+- A planet such as Venus, Moon, Jupiter, or Saturn may be assigned a body-region role depending on its house position and chart context.
+
+**52.12 Shukra as the body-area significator**
+- Venus is used in the lecture as a significator of the chest, heart region, blood flow, and related thoracic functions.
+- Its relation to the 3rd house from the Moon or to the relevant AL house is treated as a key factor when assessing chest-related or heart-related issues.
+- The lecturer's claim that Venus is relevant to the heart does not establish a medical diagnosis or prove that the native will have a heart attack.
+
+**52.13 Moon as the body-area significator**
+- The Moon is associated with the body, mind, chest, and life-continuity through the lecture's framework.
+- A Moon in a sign or house relevant to the 3rd house from AL can be strengthened or weakened as an indicator of health vulnerability or stability.
+- Moon-based interpretations should be combined with the native's actual symptoms, medical history, and standard clinical evaluation.
+
+**52.14 Monthly or dasha timing through Arudha Lagna relationships**
+- The lecturer asks whether a life-threatening condition occurs during a dasha or anantardasha linked to the 3rd house from AL or the 3rd lord from AL.
+- The dasha that activates the AL death-circumstance house is given priority, but other transits, the lord of the relevant house, and the planetary strength are also checked.
+- A dasha alone is not considered sufficient proof that a particular condition will occur.
+
+**52.15 Saturn transit and Arudha Lagna**
+- Saturn's transit across or aspecting the 3rd house from AL is treated as a possible time of danger or major disturbance when the house is otherwise vulnerable.
+- Saturn's rashi drishti on the 3rd from AL is considered especially significant when Saturn is strong or when its association with the AL lord is reinforced.
+- Transit-based interpretations should be considered alongside the native's dasha, the relevant house lord, and the actual circumstances at that time.
+
+**52.16 Rahu and Ketu as serpentine or reversed-significance factors**
+- The lecture uses Rahu and Ketu to reflect serpentine or reversed motion, digestive or internal-excretion concerns, and spiritual detachment.
+- Rahu is associated with worldly experience, desire, and material or social attachment; Ketu is associated with reversal, detachment, and spiritual or moksha-oriented activity.
+- These meanings are symbolic and framework-specific; they do not establish a medical diagnosis or a fixed personal outcome.
+
+**52.17 The 6th and 12th houses from Arudha Lagna**
+- The lecturer treats the 6th and 12th houses from AL as houses of intense challenge, loss, exhaustion, or difficult life conditions.
+- The 6th from AL is linked to struggle, discipline, or renunciation; the 12th is linked to expenditure, confinement, isolation, or loss of social identity.
+- These houses should be interpreted with stronger evidence from associated planets, lords, aspects, and actual life events before being used as deterministic predictions.
+
+**52.18 The 2nd and 11th houses from Arudha Lagna**
+- The 2nd from AL is associated with wealth, family support, comfort, possessions, and a supportive material base.
+- The 11th from AL is associated with sources of income, social connections, gains, and the channels through which the native earns or receives support.
+- A strong 2nd or 11th house may increase material support, but poor financial judgment, health, timing, or other chart factors can still limit the outcome.
+
+**52.19 The 4th and 10th houses from Arudha Lagna**
+- The 4th from AL is associated with home, peace, emotional security, and the native's inner sense of stability.
+- The 10th from AL is associated with work, public role, responsibility, and the path through which the native manifests that role.
+- These houses should be read together because a strong public role may coexist with weak domestic peace, or vice versa.
+
+**52.20 The 5th and 9th houses from Arudha Lagna**
+- The 5th from AL is associated with creativity, expression, change, attraction, and the native's idealized image.
+- The 9th from AL is associated with vision, higher guidance, protection, and the stability of the native's public or spiritual image.
+- A weak 9th from AL can leave an otherwise strong image vulnerable to disruption, while a strong 9th can act as a protective or guiding influence.
+
+**52.21 Practical Arudha Lagna assessment method**
+- Identify the AL lord and its supporting planets; evaluate whether one AL is clearly stronger.
+- Examine the 11th, 2nd, 3rd, 4th, 5th, 7th, 9th, and 12th houses from the dominant AL, the relevant lords, and the planets aspecting those houses.
+- Compare the result with the known life-stage, personal role, sources of income, health history, and actual events before making a conclusion.
+- When two ALs appear equally strong, treat the life-stage shift as a possibility rather than assuming that the first AL has ended or the second has fully taken over.
+
+**52.22 Caution on health and medical claims**
+- The lecture uses astrology to identify tendencies, timing windows, and possible life-stage pressures rather than to establish a medical diagnosis.
+- A heart attack, blockage, disease, emotional crisis, or another alarming event should be evaluated by qualified medical professionals.
+- Anyone with chest pain, breathing difficulty, loss of consciousness, severe illness, or unexplained symptoms should seek urgent medical care regardless of the chart interpretation.
+
+---
+
