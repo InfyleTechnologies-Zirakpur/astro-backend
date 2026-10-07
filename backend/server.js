@@ -37,8 +37,11 @@ app.get("/", (req, res) => {
   });
 });
 
-app.get("/api/health", (req, res) => {
-  res.json({ success: true, message: "Matchmaking API is running" });
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Server is running"
+  });
 });
 
 // Routes
@@ -52,7 +55,7 @@ app.use("/api/chat", require("./routes/chatRoutes"));
 app.use("/api/calls", require("./routes/callRoutes"));
 app.use("/api/astro-qa", require("./routes/astroQARoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
-app.use("/api/health", require("./routes/healthRoutes"));
+// app.use("/api/health", require("./routes/healthRoutes"));
 
 const io = new Server(httpServer, {
   cors: {
