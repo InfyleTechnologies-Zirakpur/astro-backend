@@ -55,7 +55,7 @@ app.use("/api/chat", require("./routes/chatRoutes"));
 app.use("/api/calls", require("./routes/callRoutes"));
 app.use("/api/astro-qa", require("./routes/astroQARoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
-// app.use("/api/health", require("./routes/healthRoutes"));
+
 
 const io = new Server(httpServer, {
   cors: {
