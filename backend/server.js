@@ -54,6 +54,7 @@ app.use("/api/matchmaking", require("./routes/matchMakingRoute"));
 app.use("/api/chat", require("./routes/chatRoutes"));
 app.use("/api/calls", require("./routes/callRoutes"));
 app.use("/api/astro-qa", require("./routes/astroQARoutes"));
+app.use("/api/numerology", require("./routes/numerologyRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 
 
