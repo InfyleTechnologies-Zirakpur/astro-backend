@@ -15,8 +15,21 @@ const getParticipantMatch = async (matchId, userId) => {
   }).lean();
 
   if (!match) return { error: "Match not found or you are not a participant", status: 404 };
+  if (match.matchType === "consultation") {
+    if (!["accepted", "active", "ended"].includes(match.status)) {
+      return { error: "Consultation is not active", status: 403 };
+    }
+    return { match };
+  }
   if (match.status !== "accepted") return { error: "Chat is available only after the match request is accepted", status: 403 };
   return { match };
+};
+
+const ensureConsultationWritable = (match) => {
+  if (match.matchType === "consultation" && match.status === "ended") {
+    return "This consultation has ended";
+  }
+  return null;
 };
 
 const getOtherParticipant = (match, userId) =>
@@ -63,7 +76,7 @@ const getChatHistory = async (req, res, next) => {
     const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 50, 1), 100);
     const before = req.query.before && !Number.isNaN(Date.parse(req.query.before)) ? new Date(req.query.before) : null;
     const matches = await Match.find({
-      status: "accepted",
+      status: { $in: ["accepted", "active", "ended"] },
       $or: [{ userA: req.user._id }, { userB: req.user._id }],
     }).select("_id").lean();
     const filter = { match: { $in: matches.map((match) => match._id) }, deletedFor: { $nin: [req.user._id] } };
@@ -104,6 +117,8 @@ const sendMessage = async (req, res, next) => {
   try {
     const result = await getParticipantMatch(req.params.matchId, req.user._id);
     if (result.error) return res.status(result.status).json({ success: false, message: result.error });
+    const endedError = ensureConsultationWritable(result.match);
+    if (endedError) return res.status(403).json({ success: false, message: endedError });
 
     const text = typeof req.body.text === "string" ? req.body.text.trim() : "";
     if (!text) return res.status(400).json({ success: false, message: "Message text is required" });
@@ -141,6 +156,8 @@ const sendStickerMessage = async (req, res, next) => {
   try {
     const result = await getParticipantMatch(req.params.matchId, req.user._id);
     if (result.error) return res.status(result.status).json({ success: false, message: result.error });
+    const endedError = ensureConsultationWritable(result.match);
+    if (endedError) return res.status(403).json({ success: false, message: endedError });
 
     const text = typeof req.body.text === "string" ? req.body.text.trim() : "";
     if (!text || text.length > 200) return res.status(400).json({ success: false, message: "Sticker is invalid" });
@@ -175,6 +192,8 @@ const sendMediaMessage = async (req, res, next) => {
   try {
     const result = await getParticipantMatch(req.params.matchId, req.user._id);
     if (result.error) return res.status(result.status).json({ success: false, message: result.error });
+    const endedError = ensureConsultationWritable(result.match);
+    if (endedError) return res.status(403).json({ success: false, message: endedError });
     if (!req.file) return res.status(400).json({ success: false, message: "A media file is required" });
 
     const mediaType = req.file.mimetype.startsWith("video/") ? "video" : "image";

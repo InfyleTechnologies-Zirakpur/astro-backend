@@ -15,10 +15,17 @@ const createCallToken = async (req, res, next) => {
 
     const match = await Match.findOne({
       _id: req.params.matchId,
-      status: "accepted",
+      status: { $in: ["accepted", "active", "ended"] },
       $or: [{ userA: req.user._id }, { userB: req.user._id }],
     }).lean();
     if (!match) return res.status(403).json({ success: false, message: "Calls are available only after the match request is accepted" });
+    if (match.matchType === "consultation") {
+      if (!["accepted", "active"].includes(match.status)) {
+        return res.status(403).json({ success: false, message: "This consultation has ended" });
+      }
+    } else if (match.status !== "accepted") {
+      return res.status(403).json({ success: false, message: "Calls are available only after the match request is accepted" });
+    }
 
     const secret = process.env.LIVEKIT_API_SECRET || "";
     const looksPlaceholder = /[•*]/.test(secret) || secret.includes("your-secret-here") || secret === "replace_me";

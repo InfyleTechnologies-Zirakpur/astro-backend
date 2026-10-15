@@ -7,11 +7,15 @@ import {
   ClipboardList,
   Sparkles,
   Smartphone,
+  Star,
+  Wallet,
 } from 'lucide-react'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/users', label: 'Users', icon: Users },
+  { to: '/astrologers', label: 'Astrologers', icon: Star },
+  { to: '/payments', label: 'Payments', icon: Wallet },
   { to: '/profiles', label: 'Profiles', icon: UserCircle2 },
   { to: '/matches', label: 'Matches', icon: Heart },
   { to: '/questionnaires', label: 'Questionnaires', icon: ClipboardList },

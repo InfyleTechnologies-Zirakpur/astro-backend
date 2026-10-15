@@ -29,6 +29,8 @@ const Dashboard = () => {
         <StatCard icon={FileText} label="Completed Profiles" value={formatNumber(stats.completedProfiles)} tone="sky" />
         <StatCard icon={Heart} label="Total Matches" value={formatNumber(stats.totalMatches)} sublabel={`${formatNumber(stats.pendingMatches)} pending`} tone="rose" />
         <StatCard icon={HeartHandshake} label="Accepted Matches" value={formatNumber(stats.acceptedMatches)} tone="emerald" />
+        <StatCard icon={Users} label="Astrologers" value={formatNumber(stats.totalAstrologers)} sublabel={`${formatNumber(stats.onlineAstrologers)} online`} tone="violet" />
+        <StatCard icon={Heart} label="Consultations" value={formatNumber(stats.totalConsultations)} sublabel={`₹${formatNumber(stats.consultationRevenue)} revenue`} tone="amber" />
       </div>
 
       <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">

@@ -8,6 +8,9 @@ const Questionnaire = require("../models/questionnaire");
 const Horoscope = require("../models/horoscope");
 const AstroConversation = require("../models/astroConversation");
 const DeviceToken = require("../models/deviceToken");
+const AstrologerProfile = require("../models/astrologerProfile");
+const Wallet = require("../models/wallet");
+const WalletTransaction = require("../models/walletTransaction");
 
 const adminLogin = async (req, res, next) => {
   try {
@@ -67,6 +70,10 @@ const getStats = async (req, res, next) => {
       mediaMessages,
       totalChats,
       astroConversations,
+      totalAstrologers,
+      onlineAstrologers,
+      totalConsultations,
+      consultationRevenue,
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ isActive: true }),
@@ -80,6 +87,13 @@ const getStats = async (req, res, next) => {
       Message.countDocuments({ type: "media" }),
       Message.distinct("match").then((ids) => ids.length),
       AstroConversation.countDocuments(),
+      User.countDocuments({ role: "astrologer" }),
+      AstrologerProfile.countDocuments({ isOnline: true }),
+      Match.countDocuments({ matchType: "consultation" }),
+      WalletTransaction.aggregate([
+        { $match: { reason: "consultation_charge" } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]).then((r) => r[0]?.total || 0),
     ]);
 
     const last7Days = [];
@@ -108,6 +122,10 @@ const getStats = async (req, res, next) => {
         mediaMessages,
         totalChats,
         astroConversations,
+        totalAstrologers,
+        onlineAstrologers,
+        totalConsultations,
+        consultationRevenue,
         last7Days,
       },
     });
@@ -189,8 +207,8 @@ const updateUserStatus = async (req, res, next) => {
 const updateUserRole = async (req, res, next) => {
   try {
     const { role } = req.body;
-    if (!["user", "admin"].includes(role)) {
-      return res.status(400).json({ success: false, message: "role must be 'user' or 'admin'" });
+    if (!["user", "astrologer", "admin"].includes(role)) {
+      return res.status(400).json({ success: false, message: "role must be 'user', 'astrologer' or 'admin'" });
     }
     const user = await User.findByIdAndUpdate(req.params.userId, { role }, { new: true });
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
@@ -214,6 +232,17 @@ const deleteUser = async (req, res, next) => {
       DeviceToken.deleteMany({ user: req.params.userId }),
       Message.deleteMany({ sender: req.params.userId }),
       Match.deleteMany({ $or: [{ userA: req.params.userId }, { userB: req.params.userId }] }),
+      AstrologerProfile.deleteMany({ user: req.params.userId }),
+      Wallet.deleteMany({ user: req.params.userId }),
+      WalletTransaction.deleteMany({ user: req.params.userId }),
+    ]);
+    const FreeUsage = require("../models/freeUsage");
+    const Review = require("../models/review");
+    const ConsultationQueue = require("../models/consultationQueue");
+    await Promise.all([
+      FreeUsage.deleteMany({ $or: [{ client: req.params.userId }, { astrologer: req.params.userId }] }),
+      Review.deleteMany({ $or: [{ client: req.params.userId }, { astrologer: req.params.userId }] }),
+      ConsultationQueue.deleteMany({ $or: [{ client: req.params.userId }, { astrologer: req.params.userId }] }),
     ]);
 
     res.json({ success: true, message: "User and related data deleted" });
@@ -504,6 +533,95 @@ const listDeviceTokens = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// ---- Astrologers (admin CRUD) ----
+const createAstrologer = async (req, res, next) => {
+  try {
+    const { name, email, password, gender = "other", profile = {} } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, message: "name, email and password are required" });
+    }
+    const existing = await User.findOne({ email: String(email).toLowerCase() });
+    if (existing) return res.status(409).json({ success: false, message: "User already exists" });
+
+    const user = await User.create({
+      name: String(name).trim(),
+      email: String(email).trim().toLowerCase(),
+      password,
+      gender,
+      role: "astrologer",
+    });
+    const astroProfile = await AstrologerProfile.create({
+      user: user._id,
+      displayName: profile.displayName || user.name,
+      photo: profile.photo || null,
+      bio: profile.bio || "",
+      expertise: profile.expertise || [],
+      languages: profile.languages || [],
+      experienceYears: profile.experienceYears || 0,
+      rateChatPerMin: profile.rateChatPerMin ?? 20,
+      rateCallPerMin: profile.rateCallPerMin ?? 30,
+      isVerified: profile.isVerified ?? true,
+      freeMinutesEnabled: profile.freeMinutesEnabled ?? true,
+      freeMinutesLimitMin: profile.freeMinutesLimitMin ?? 10,
+    });
+    await Wallet.findOneAndUpdate({ user: user._id }, {}, { upsert: true, new: true, setDefaultsOnInsert: true });
+    res.status(201).json({ success: true, message: "Astrologer created", data: { user: user.toSafeObject(), profile: astroProfile } });
+  } catch (error) { next(error); }
+};
+
+const listAstrologers = async (req, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+    const { search, online, verified } = req.query;
+    const userFilter = { role: "astrologer" };
+    if (search) {
+      userFilter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+    const users = await User.find(userFilter).select("_id").lean();
+    const profileFilter = { user: { $in: users.map((u) => u._id) } };
+    if (online === "true") profileFilter.isOnline = true;
+    if (online === "false") profileFilter.isOnline = false;
+    if (verified === "true") profileFilter.isVerified = true;
+    if (verified === "false") profileFilter.isVerified = false;
+    const [profiles, total] = await Promise.all([
+      AstrologerProfile.find(profileFilter).populate("user", "name email gender isActive role createdAt")
+        .sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      AstrologerProfile.countDocuments(profileFilter),
+    ]);
+    res.json({ success: true, data: profiles, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 } });
+  } catch (error) { next(error); }
+};
+
+const updateAstrologer = async (req, res, next) => {
+  try {
+    const profile = await AstrologerProfile.findOne({ user: req.params.astrologerId });
+    if (!profile) return res.status(404).json({ success: false, message: "Astrologer not found" });
+    const allowed = ["displayName", "photo", "bio", "expertise", "languages", "experienceYears", "rateChatPerMin", "rateCallPerMin", "isOnline", "isVerified", "freeMinutesEnabled", "freeMinutesLimitMin"];
+    for (const key of allowed) if (req.body[key] !== undefined) profile[key] = req.body[key];
+    await profile.save();
+    res.json({ success: true, message: "Astrologer updated", data: profile });
+  } catch (error) { next(error); }
+};
+
+const listConsultations = async (req, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+    const filter = { matchType: "consultation" };
+    if (req.query.status) filter.status = req.query.status;
+    const [items, total] = await Promise.all([
+      Match.find(filter).populate("userA", "name email").populate("userB", "name email")
+        .sort({ updatedAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      Match.countDocuments(filter),
+    ]);
+    res.json({ success: true, data: items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 } });
+  } catch (error) { next(error); }
+};
+
 const deactivateDeviceToken = async (req, res, next) => {
   try {
     const { isActive } = req.body;
@@ -513,6 +631,81 @@ const deactivateDeviceToken = async (req, res, next) => {
     const token = await DeviceToken.findByIdAndUpdate(req.params.tokenId, { isActive }, { new: true });
     if (!token) return res.status(404).json({ success: false, message: "Device token not found" });
     res.json({ success: true, message: isActive ? "Token activated" : "Token deactivated", data: token });
+  } catch (error) { next(error); }
+};
+
+// ---- Payments: recharge orders, recharge credits, manual payout report ----
+const listRechargeOrders = async (req, res, next) => {
+  try {
+    const RechargeOrder = require("../models/rechargeOrder");
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+    const filter = {};
+    if (req.query.status) filter.status = req.query.status;
+    const [items, total] = await Promise.all([
+      RechargeOrder.find(filter).populate("user", "name email")
+        .sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      RechargeOrder.countDocuments(filter),
+    ]);
+    const paidSum = await RechargeOrder.aggregate([
+      { $match: { status: "paid" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]).then((r) => r[0]?.total || 0);
+    res.json({
+      success: true,
+      data: items,
+      summary: { paidTotal: paidSum, razorpayConfigured: Boolean(process.env.RAZORPAY_KEY_ID) },
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 },
+    });
+  } catch (error) { next(error); }
+};
+
+const listRechargeTransactions = async (req, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+    const [items, total] = await Promise.all([
+      WalletTransaction.find({ reason: "recharge" }).populate("user", "name email")
+        .sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      WalletTransaction.countDocuments({ reason: "recharge" }),
+    ]);
+    res.json({ success: true, data: items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 } });
+  } catch (error) { next(error); }
+};
+
+// Manual-settlement report: per-astrologer paid earnings in a window (CSV-friendly)
+const payoutReport = async (req, res, next) => {
+  try {
+    const { from, to } = req.query;
+    const match = { reason: "consultation_earning" };
+    if (from || to) {
+      match.createdAt = {};
+      if (from && !Number.isNaN(Date.parse(from))) match.createdAt.$gte = new Date(from);
+      if (to && !Number.isNaN(Date.parse(to))) match.createdAt.$lte = new Date(to);
+    }
+    const rows = await WalletTransaction.aggregate([
+      { $match: match },
+      { $group: { _id: "$user", totalEarnings: { $sum: "$amount" }, sessions: { $sum: 1 } } },
+      { $sort: { totalEarnings: -1 } },
+      { $limit: 500 },
+    ]);
+    const userIds = rows.map((r) => r._id);
+    const users = await User.find({ _id: { $in: userIds } }).select("name email").lean();
+    const profiles = await AstrologerProfile.find({ user: { $in: userIds } }).select("user displayName").lean();
+    const userMap = new Map(users.map((u) => [String(u._id), u]));
+    const profileMap = new Map(profiles.map((p) => [String(p.user), p]));
+    const grandTotal = rows.reduce((s, r) => s + r.totalEarnings, 0);
+    res.json({
+      success: true,
+      data: rows.map((r) => ({
+        astrologerId: r._id,
+        name: profileMap.get(String(r._id))?.displayName || userMap.get(String(r._id))?.name,
+        email: userMap.get(String(r._id))?.email,
+        sessions: r.sessions,
+        totalEarnings: r.totalEarnings,
+      })),
+      summary: { grandTotal, count: rows.length, window: { from: from || null, to: to || null } },
+    });
   } catch (error) { next(error); }
 };
 
@@ -539,4 +732,11 @@ module.exports = {
   listAstroConversations,
   listDeviceTokens,
   deactivateDeviceToken,
+  createAstrologer,
+  listAstrologers,
+  updateAstrologer,
+  listConsultations,
+  listRechargeOrders,
+  listRechargeTransactions,
+  payoutReport,
 };

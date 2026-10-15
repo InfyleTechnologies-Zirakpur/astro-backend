@@ -26,6 +26,10 @@ const getCookieValue = (cookieHeader, name) => {
 const getParticipantMatch = async (matchId, userId) => {
   if (!mongoose.isValidObjectId(matchId)) return null;
   const match = await Match.findOne({ _id: matchId, $or: [{ userA: userId }, { userB: userId }] }).lean();
+  if (!match) return null;
+  if (match.matchType === "consultation") {
+    return ["accepted", "active", "ended"].includes(match.status) ? match : null;
+  }
   return match?.status === "accepted" ? match : null;
 };
 
@@ -98,6 +102,9 @@ const setupChatSockets = (io) => {
       try {
         const match = await getParticipantMatch(matchId, socket.user._id);
         if (!match) return acknowledge({ success: false, message: "Match not found or you are not a participant" });
+        if (match.matchType === "consultation" && match.status === "ended") {
+          return acknowledge({ success: false, message: "This consultation has ended" });
+        }
 
         const cleanText = typeof text === "string" ? text.trim() : "";
         if (!cleanText) return acknowledge({ success: false, message: "Message text is required" });

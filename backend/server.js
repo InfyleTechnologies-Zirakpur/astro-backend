@@ -24,7 +24,14 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    // Keep raw bytes for Razorpay webhook HMAC verification
+    if (req.originalUrl && req.originalUrl.includes("/api/wallet/webhook")) {
+      req.rawBody = buf;
+    }
+  },
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -53,6 +60,10 @@ app.use("/api/horoscope", require("./routes/horoscopeRoutes"));
 app.use("/api/matchmaking", require("./routes/matchMakingRoute"));
 app.use("/api/chat", require("./routes/chatRoutes"));
 app.use("/api/calls", require("./routes/callRoutes"));
+app.use("/api/astrologers", require("./routes/astrologerRoutes"));
+app.use("/api/consultations", require("./routes/consultationRoutes"));
+app.use("/api/wallet", require("./routes/walletRoutes"));
+app.use("/api/astrologer", require("./routes/astrologerDashboardRoutes"));
 app.use("/api/astro-qa", require("./routes/astroQARoutes"));
 app.use("/api/numerology", require("./routes/numerologyRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));

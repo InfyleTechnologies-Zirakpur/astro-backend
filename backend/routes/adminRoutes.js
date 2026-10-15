@@ -24,6 +24,13 @@ const {
   listAstroConversations,
   listDeviceTokens,
   deactivateDeviceToken,
+  createAstrologer,
+  listAstrologers,
+  updateAstrologer,
+  listConsultations,
+  listRechargeOrders,
+  listRechargeTransactions,
+  payoutReport,
 } = require("../controllers/adminController");
 
 const router = express.Router();
@@ -65,6 +72,19 @@ router.get("/horoscopes/user/:userId", getHoroscopeDetail);
 
 // Astro conversations
 router.get("/astro-conversations", listAstroConversations);
+
+// Astrologers
+router.post("/astrologers", createAstrologer);
+router.get("/astrologers", listAstrologers);
+router.patch("/astrologers/:astrologerId", updateAstrologer);
+
+// Consultations (paid + free tracking)
+router.get("/consultations", listConsultations);
+
+// Payments: Razorpay recharge reconciliation + manual payout report
+router.get("/recharge-orders", listRechargeOrders);
+router.get("/recharge-transactions", listRechargeTransactions);
+router.get("/payout-report", payoutReport);
 
 // Device tokens
 router.get("/device-tokens", listDeviceTokens);
