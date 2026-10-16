@@ -3,6 +3,7 @@ const Match = require("../models/match");
 const Message = require("../models/message");
 const { blockedMessageReason } = require("../services/messageFilter");
 const { getIo } = require("../services/socketHub");
+const { ensureBillable } = require("../services/consultationBilling");
 const { sendChatNotification } = require("../services/notificationService");
 const { uploadChatMedia, deleteMedia, extractPublicIdFromUrl } = require("../config/cloudinary");
 
@@ -30,6 +31,24 @@ const ensureConsultationWritable = (match) => {
     return "This consultation has ended";
   }
   return null;
+};
+
+/// Pay-first gate for the REST send paths (the app normally sends over the
+/// socket, but the same rule has to hold here). Only the paying client is
+/// blocked, and only once the pair's free minutes are used up.
+const consultationBillingError = async (match, userId) => {
+  if (!match || match.matchType !== "consultation") return null;
+  if (String(match.consultation?.client) !== String(userId)) return null;
+  const gate = await ensureBillable(match);
+  if (gate.ok) return null;
+  return {
+    status: 402,
+    code: gate.reason === "ended" ? "CONSULTATION_ENDED" : "INSUFFICIENT_BALANCE",
+    message:
+      gate.reason === "ended"
+        ? "This consultation has ended"
+        : "Please recharge your wallet to continue — your paid minutes are over.",
+  };
 };
 
 const getOtherParticipant = (match, userId) =>
@@ -119,6 +138,14 @@ const sendMessage = async (req, res, next) => {
     if (result.error) return res.status(result.status).json({ success: false, message: result.error });
     const endedError = ensureConsultationWritable(result.match);
     if (endedError) return res.status(403).json({ success: false, message: endedError });
+    const billingError = await consultationBillingError(result.match, req.user._id);
+    if (billingError) {
+      return res.status(billingError.status).json({
+        success: false,
+        code: billingError.code,
+        message: billingError.message,
+      });
+    }
 
     const text = typeof req.body.text === "string" ? req.body.text.trim() : "";
     if (!text) return res.status(400).json({ success: false, message: "Message text is required" });
@@ -158,6 +185,14 @@ const sendStickerMessage = async (req, res, next) => {
     if (result.error) return res.status(result.status).json({ success: false, message: result.error });
     const endedError = ensureConsultationWritable(result.match);
     if (endedError) return res.status(403).json({ success: false, message: endedError });
+    const billingError = await consultationBillingError(result.match, req.user._id);
+    if (billingError) {
+      return res.status(billingError.status).json({
+        success: false,
+        code: billingError.code,
+        message: billingError.message,
+      });
+    }
 
     const text = typeof req.body.text === "string" ? req.body.text.trim() : "";
     if (!text || text.length > 200) return res.status(400).json({ success: false, message: "Sticker is invalid" });
@@ -194,6 +229,14 @@ const sendMediaMessage = async (req, res, next) => {
     if (result.error) return res.status(result.status).json({ success: false, message: result.error });
     const endedError = ensureConsultationWritable(result.match);
     if (endedError) return res.status(403).json({ success: false, message: endedError });
+    const billingError = await consultationBillingError(result.match, req.user._id);
+    if (billingError) {
+      return res.status(billingError.status).json({
+        success: false,
+        code: billingError.code,
+        message: billingError.message,
+      });
+    }
     if (!req.file) return res.status(400).json({ success: false, message: "A media file is required" });
 
     const mediaType = req.file.mimetype.startsWith("video/") ? "video" : "image";

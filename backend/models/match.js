@@ -42,8 +42,15 @@ const consultationSchema = new mongoose.Schema({
 	durationSec: { type: Number, default: 0, min: 0 },
 	freeSecGranted: { type: Number, default: 0, min: 0 },
 	billableSec: { type: Number, default: 0, min: 0 },
+	// Minutes already debited from the client's wallet. The watermark that
+	// makes incremental billing idempotent (a minute is charged exactly once).
+	billedMin: { type: Number, default: 0, min: 0 },
 	amount: { type: Number, default: 0, min: 0 },
 	paymentStatus: { type: String, enum: ["free", "pending", "deducted", "failed"], default: "pending" },
+	// Last time the meter ran (billing tick), not necessarily the end.
+	billedAt: { type: Date, default: null },
+	// Why the session ended: "ended" | "insufficient_balance" | "user" | "astrologer".
+	endedReason: { type: String, default: null },
 	reviewGiven: { type: Boolean, default: false },
 }, { _id: false });
 

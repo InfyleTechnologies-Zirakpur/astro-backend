@@ -1,6 +1,7 @@
-// Multi-provider AI service: Groq (primary) → Gemini → Cloudflare Workers AI
+// Multi-provider AI service: OpenRouter Nemotron (primary) → Groq → Gemini → Cloudflare Workers AI
 const { GoogleGenAI } = require("@google/genai");
 const Groq = require("groq-sdk");
+const { OpenAI } = require("openai");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -11,6 +12,20 @@ const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 
 const groq = process.env.GROQ_API_KEY
   ? new Groq({ apiKey: process.env.GROQ_API_KEY })
+  : null;
+
+// OpenRouter (Nemotron primary) — OpenAI-compatible
+const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b";
+const openrouter = process.env.OPENROUTER_API_KEY
+  ? new OpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: OPENROUTER_BASE_URL,
+      defaultHeaders: {
+        "HTTP-Referer": process.env.OPENROUTER_SITE_URL || process.env.CLIENT_URL || "",
+        "X-Title": process.env.OPENROUTER_APP_NAME || "AstroBackend",
+      },
+    })
   : null;
 
 // Cloudflare Workers AI config
@@ -26,6 +41,16 @@ const CF_MAX_ATTEMPTS = 2;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const providers = [
+  {
+    name: 'openrouter',
+    client: openrouter,
+    model: OPENROUTER_MODEL,
+    priority: 0,
+    enabled: !!process.env.OPENROUTER_API_KEY,
+    maxAttempts: 2,
+    timeout: 90000,
+    healthCheck: checkOpenRouterHealth,
+  },
   {
     name: 'groq',
     client: groq,
@@ -55,6 +80,25 @@ const providers = [
     healthCheck: checkCloudflareHealth,
   },
 ].filter(p => p.enabled && (p.client || p.name === 'cloudflare')).sort((a, b) => a.priority - b.priority);
+
+async function checkOpenRouterHealth() {
+  if (!process.env.OPENROUTER_API_KEY) {
+    return { healthy: false, error: 'OpenRouter not configured' };
+  }
+  try {
+    const response = await fetch(`${OPENROUTER_BASE_URL}/models`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}` },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) {
+      return { healthy: false, error: `HTTP ${response.status}` };
+    }
+    return { healthy: true, model: OPENROUTER_MODEL };
+  } catch (e) {
+    return { healthy: false, error: `Connection failed: ${e.message}` };
+  }
+}
 
 async function checkCloudflareHealth() {
   if (!CLOUDFLARE_ENABLED || !CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_AI_TOKEN) {
@@ -94,7 +138,9 @@ Ground rules:
 - Keep answers focused and conversational — a few short paragraphs, not an exhaustive essay, unless the user asks for full detail.`;
 
 const cleanAnswer = (text) =>
-  text
+  String(text || "")
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    .replace(/<thinking>[\s\S]*?<\/thinking>/gi, "")
     .split("\n")
     .map((line) => {
       const core = line.replace(/^\s*[>*+\-–]\s*/, "").replace(/^\s*\*{1,3}\s*/, "").trim();
@@ -131,7 +177,24 @@ function formatError(error) {
 function classifyError(providerName, error) {
   const code = error.code ?? error.status ?? error.error?.code;
   const message = String(error.message ?? error.error?.message ?? "").toLowerCase();
-  
+
+  if (providerName === 'openrouter') {
+    if (code === 401 || code === 403) {
+      return { fatal: true, type: 'auth', retryable: false };
+    }
+    if (code === 402) {
+      return { fatal: true, type: 'insufficient_credits', retryable: false };
+    }
+    if (code === 404 || message.includes('model not found') || message.includes('model_not_found') || message.includes('no endpoints')) {
+      return { fatal: true, type: 'model_unavailable', retryable: false };
+    }
+    if (code === 429 || code === 502 || code === 503 || code === 408 ||
+        /(high demand|unavailable|resource_exhausted|temporarily blocked|rate limit|quota)/i.test(message)) {
+      return { fatal: false, type: 'rate_limit', retryable: true };
+    }
+    return { fatal: false, type: 'unknown', retryable: true };
+  }
+
   if (providerName === 'groq') {
     if (code === 404 || message.includes('model not found') || message.includes('model_not_found')) {
       return { fatal: true, type: 'model_unavailable', retryable: false };
@@ -182,7 +245,22 @@ async function callProvider(provider, userMessage) {
   try {
     let content;
     
-    if (name === 'groq') {
+    if (name === 'openrouter') {
+      const response = await client.chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userMessage }
+        ],
+        temperature: 0.7,
+        top_p: 0.95,
+        max_tokens: 4096,
+        reasoning: { enabled: true },
+      }, { signal: controller.signal });
+      content = response.choices?.[0]?.message?.content
+        || response.choices?.[0]?.message?.reasoning_details
+        || '';
+    } else if (name === 'groq') {
       const response = await client.chat.completions.create({
         model,
         messages: [

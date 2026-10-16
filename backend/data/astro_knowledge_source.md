@@ -5969,3 +5969,8 @@ This section summarizes the lecture's framework for Kendra and Kona lordships, K
 - Check natural planetary nature, functional lordship, strength, dignity, aspects, conjunctions, and any divisional-chart context before interpreting a Yoga Karaka or Kendradhipati Dosha.
 - State which conclusions are the teacher's framework and which details remain uncertain in the transcript.
 - Use astrology for cultural or personal reflection only, not as a substitute for evidence-based medical, financial, legal, employment, or relationship decisions.
+
+
+
+my session 
+opencode -s ses_ebb60fd75ffeFEczHFI0ZOQJeX

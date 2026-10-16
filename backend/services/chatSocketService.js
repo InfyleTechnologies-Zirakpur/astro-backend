@@ -17,6 +17,37 @@ const {
   clearPendingCalls,
 } = require("./socketHub");
 const { sendChatNotification, sendCallNotification } = require("./notificationService");
+const { ensureBillable } = require("./consultationBilling");
+
+/// Pay-first gate for a consultation: only the paying client is blocked, and
+/// only once the pair's free minutes are gone. The astrologer can still send a
+/// message ("recharge karo") while the client tops up; the meter itself is
+/// settled by the billing sweep and by `GET /consultations/:id/status`.
+const blockedByBilling = async (match, userId) => {
+  if (!match || match.matchType !== "consultation") return null;
+  if (String(match.consultation?.client) !== String(userId)) return null;
+  const gate = await ensureBillable(match);
+  if (gate.ok) return null;
+  return {
+    code: gate.reason === "ended" ? "CONSULTATION_ENDED" : "INSUFFICIENT_BALANCE",
+    message:
+      gate.reason === "ended"
+        ? "This consultation has ended"
+        : "Please recharge your wallet to continue — your paid minutes are over.",
+    data: billingHint(gate.summary),
+  };
+};
+
+const billingHint = (summary) =>
+  summary
+    ? {
+        freeRemainingSec: summary.freeRemainingSec,
+        walletBalance: summary.walletBalance,
+        paidMinutesLeft: summary.paidMinutesLeft,
+        ratePerMin: summary.ratePerMin,
+        chargedAmount: summary.amount,
+      }
+    : {};
 
 const getCookieValue = (cookieHeader, name) => {
   const cookie = cookieHeader?.split(";").map((item) => item.trim()).find((item) => item.startsWith(`${name}=`));
@@ -106,6 +137,11 @@ const setupChatSockets = (io) => {
           return acknowledge({ success: false, message: "This consultation has ended" });
         }
 
+        // Free minutes first, then paid ones only: a client whose (free + paid)
+        // minutes are over cannot keep the astrologer engaged for free.
+        const billing = await blockedByBilling(match, socket.user._id);
+        if (billing) return acknowledge({ success: false, ...billing });
+
         const cleanText = typeof text === "string" ? text.trim() : "";
         if (!cleanText) return acknowledge({ success: false, message: "Message text is required" });
         if (cleanText.length > 2000) return acknowledge({ success: false, message: "Message text cannot exceed 2000 characters" });
@@ -189,6 +225,11 @@ const setupChatSockets = (io) => {
         const match = await getParticipantMatch(matchId, socket.user._id);
         if (!match) return acknowledge({ success: false, message: "Calls are available only after the match request is accepted" });
         if (!["voice", "video"].includes(kind)) return acknowledge({ success: false, message: "kind must be voice or video" });
+
+        // Same pay-first rule for calls: after the free minutes the client must
+        // have paid minutes left before dialing.
+        const billing = await blockedByBilling(match, socket.user._id);
+        if (billing) return acknowledge({ success: false, ...billing });
 
         const callerId = String(socket.user._id);
         const calleeId = String(getCallParticipant(match, socket.user._id));

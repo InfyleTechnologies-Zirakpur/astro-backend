@@ -6,6 +6,8 @@ const { getClient, isConfigured, verifyPaymentSignature, verifyWebhookSignature 
 const MIN_RECHARGE = 10;
 const MAX_RECHARGE = 100000;
 
+const currency = () => (process.env.CURRENCY || "INR").toUpperCase();
+
 const getOrCreateWallet = async (userId) => {
   let wallet = await Wallet.findOne({ user: userId });
   if (!wallet) wallet = await Wallet.create({ user: userId, balance: 0 });
@@ -57,13 +59,13 @@ const createRechargeOrder = async (req, res, next) => {
     const amountPaise = Math.round(amount * 100);
     const receipt = `rc_${req.user._id}_${Date.now()}`;
     const client = getClient();
-    const order = await client.orders.create({ amount: amountPaise, currency: "INR", receipt });
+    const order = await client.orders.create({ amount: amountPaise, currency: currency(), receipt });
 
     await RechargeOrder.create({
       user: req.user._id,
       amount,
       amountPaise,
-      currency: "INR",
+      currency: currency(),
       razorpayOrderId: order.id,
       receipt,
       status: "created",
@@ -72,7 +74,7 @@ const createRechargeOrder = async (req, res, next) => {
     res.status(201).json({
       success: true,
       message: "Order created",
-      data: { orderId: order.id, amount, amountPaise, currency: "INR", keyId: process.env.RAZORPAY_KEY_ID },
+      data: { orderId: order.id, amount, amountPaise, currency: currency(), keyId: process.env.RAZORPAY_KEY_ID },
     });
   } catch (error) { next(error); }
 };
@@ -99,8 +101,21 @@ const verifyRecharge = async (req, res, next) => {
     // Confirm with Razorpay that payment is captured and amount matches the order.
     if (isConfigured()) {
       try {
-        const payment = await getClient().payments.fetch(paymentId);
-        if (payment.order_id !== orderId || payment.status !== "captured" || Number(payment.amount) !== rechargeOrder.amountPaise) {
+        let payment = await getClient().payments.fetch(paymentId);
+        if (payment.order_id !== orderId) {
+          rechargeOrder.status = "failed";
+          await rechargeOrder.save();
+          return res.status(400).json({ success: false, message: "Payment does not belong to this order" });
+        }
+        // Some accounts don't auto-capture: capture the authorised payment first.
+        if (payment.status === "authorized") {
+          try {
+            payment = await getClient().payments.capture(paymentId, rechargeOrder.amountPaise, currency());
+          } catch (_) {
+            // Fall through — the status check below will reject anything not captured.
+          }
+        }
+        if (payment.status !== "captured" || Number(payment.amount) !== rechargeOrder.amountPaise) {
           rechargeOrder.status = "failed";
           await rechargeOrder.save();
           return res.status(400).json({ success: false, message: "Payment not captured or amount mismatch" });

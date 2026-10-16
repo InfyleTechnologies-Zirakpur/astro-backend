@@ -1,24 +1,19 @@
 const mongoose = require("mongoose");
 const User = require("../models/user");
 const AstrologerProfile = require("../models/astrologerProfile");
-const FreeUsage = require("../models/freeUsage");
 const Match = require("../models/match");
 const Review = require("../models/review");
 const ConsultationQueue = require("../models/consultationQueue");
-const Wallet = require("../models/wallet");
 const WalletTransaction = require("../models/walletTransaction");
 const Message = require("../models/message");
 const { getIo, isUserInCall } = require("../services/socketHub");
+const {
+  FREE_MINUTES_DEFAULT,
+  MIN_PAID_BLOCK_MIN,
+  freeRemainingSecFor,
+} = require("../services/consultationBilling");
 
-const FREE_DEFAULT_SEC = 10 * 60;
-const MIN_PAID_BLOCK_MIN = 5;
-
-const freeRemainingSecFor = async (clientId, astrologerId, profile) => {
-  if (!profile.freeMinutesEnabled) return 0;
-  const limit = (profile.freeMinutesLimitMin ?? 10) * 60;
-  const usage = await FreeUsage.findOne({ client: clientId, astrologer: astrologerId }).lean();
-  return Math.max(0, limit - (usage?.freeSecondsUsed || 0));
-};
+const FREE_DEFAULT_SEC = FREE_MINUTES_DEFAULT * 60;
 
 const toCard = (profile, extra = {}) => ({
   id: profile.user?._id || profile.user,
