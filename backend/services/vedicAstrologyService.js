@@ -164,7 +164,14 @@ const getPlanetSiderealLongitudes = (date, observerLocation) => {
   const observer = hasObserver
     ? new Astronomy.Observer(observerLocation.latitude, observerLocation.longitude, 0)
     : null;
-  const bodies = { Sun: null, Moon: null, Mars: "Mars", Mercury: "Mercury", Jupiter: "Jupiter", Venus: "Venus", Saturn: "Saturn" };
+  // Uranus, Neptune and Pluto are geocentric as well, so they ride the same
+  // topocentric/geocentric path as the classical planets.
+  const bodies = {
+    Sun: null, Moon: null,
+    Mars: "Mars", Mercury: "Mercury", Jupiter: "Jupiter",
+    Venus: "Venus", Saturn: "Saturn",
+    Uranus: "Uranus", Neptune: "Neptune", Pluto: "Pluto",
+  };
   const tropical = {};
 
   tropical.Sun = observer
@@ -197,7 +204,40 @@ const getPlanetSiderealLongitudes = (date, observerLocation) => {
     sidereal,
     nodeType,
     positionReference: observer ? "topocentric" : "geocentric",
-  }; // sidereal: { Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu } in sidereal degrees
+  }; // sidereal: { Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Uranus, Neptune, Pluto, Rahu, Ketu } in sidereal degrees
+};
+
+// --- Retrograde (vakri) detection ---
+// A planet is retrograde when its ecliptic longitude decreases with time. The
+// Sun and Moon are always direct; the lunar nodes (Rahu/Ketu) are always
+// retrograde, so they need no computation.
+const getTropicalLongitude = (bodyName, date, observer) => {
+  const bodyKey = Astronomy.Body[bodyName];
+  if (!bodyKey) return Number.NaN;
+  if (bodyName === "Sun") {
+    return observer
+      ? getTopocentricEclipticLongitude(Astronomy.Body.Sun, date, observer)
+      : Astronomy.SunPosition(date).elon;
+  }
+  return observer
+    ? getTopocentricEclipticLongitude(bodyKey, date, observer)
+    : Astronomy.Ecliptic(Astronomy.GeoVector(bodyKey, date, true)).elon;
+};
+
+const getIsRetrograde = (bodyName, date, observer) => {
+  if (bodyName === "Rahu" || bodyName === "Ketu") return true;
+  if (bodyName === "Sun" || bodyName === "Moon") return false;
+
+  const stepMs = 2 * 24 * 60 * 60 * 1000; // 2 days, so slow-moving planets read cleanly
+  const now = getTropicalLongitude(bodyName, date, observer);
+  const later = getTropicalLongitude(bodyName, new Date(date.getTime() + stepMs), observer);
+  if (!Number.isFinite(now) || !Number.isFinite(later)) return false;
+
+  // Wrap-safe difference: a planet at 359° moving to 1° is direct, not retrograde.
+  let delta = later - now;
+  if (delta > 180) delta -= 360;
+  if (delta < -180) delta += 360;
+  return delta < 0;
 };
 
 // --- Navamsha (D9) sign for a given sidereal longitude ---
@@ -256,9 +296,10 @@ const calculateVedicChart = (birthData = {}) => {
   const utcDate = new Date(localMillis - (Number(timeZoneOffsetMinutes) || 0) * 60 * 1000);
   if (Number.isNaN(utcDate.getTime())) return { precision: "invalid" };
 
+  const observer = hasLocation ? new Astronomy.Observer(latitude, longitude, 0) : null;
   const { sidereal: planetLongitudes, nodeType, positionReference } = getPlanetSiderealLongitudes(
     utcDate,
-    hasLocation ? { latitude, longitude } : null
+    observer ? { latitude, longitude } : null
   );
   const moonNakshatra = getNakshatra(planetLongitudes.Moon);
 
@@ -274,6 +315,7 @@ const calculateVedicChart = (birthData = {}) => {
         isDebilitated: DEBILITATION[name] === getRashi(lon),
         isOwnSign: RASHI_LORDS[getRashi(lon)] === name,
         isMoolatrikona: MOOLATRIKONA[name] === getRashi(lon),
+        retrograde: getIsRetrograde(name, utcDate, observer),
       },
     ])
   );

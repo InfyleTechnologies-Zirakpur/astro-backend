@@ -9,6 +9,7 @@ require("dotenv").config();
 const connectDB = require("./config/db");
 const { setupChatSockets } = require("./services/chatSocketService");
 const { setIo } = require("./services/socketHub");
+const { startBillingSweep } = require("./services/consultationBilling");
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -77,6 +78,11 @@ const io = new Server(httpServer, {
 });
 setupChatSockets(io);
 setIo(io);
+
+// Consultation billing runs on a timer, not only when someone types: this is
+// what debits each started paid minute and stops a chat/call the moment the
+// client's paid minutes are over — even during a silent voice call.
+startBillingSweep();
 
 app.use((error, req, res, next) => {
   if (error instanceof require("multer").MulterError || error.message?.includes("are allowed")) {

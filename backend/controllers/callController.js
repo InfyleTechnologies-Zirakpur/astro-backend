@@ -23,6 +23,29 @@ const createCallToken = async (req, res, next) => {
       if (!["accepted", "active"].includes(match.status)) {
         return res.status(403).json({ success: false, message: "This consultation has ended" });
       }
+      // Pay-first for calls: only the paying client is gated, and only once the
+      // pair's free minutes are exhausted.
+      if (String(match.consultation?.client) === String(req.user._id)) {
+        const gate = await ensureBillable(match);
+        if (!gate.ok && gate.reason !== "busy") {
+          return res.status(402).json({
+            success: false,
+            code: gate.reason === "ended" ? "CONSULTATION_ENDED" : "INSUFFICIENT_BALANCE",
+            message:
+              gate.reason === "ended"
+                ? "This consultation has ended"
+                : "Please recharge your wallet to continue — your paid minutes are over.",
+            data: gate.summary
+              ? {
+                  freeRemainingSec: gate.summary.freeRemainingSec,
+                  walletBalance: gate.summary.walletBalance,
+                  paidMinutesLeft: gate.summary.paidMinutesLeft,
+                  ratePerMin: gate.summary.ratePerMin,
+                }
+              : {},
+          });
+        }
+      }
     } else if (match.status !== "accepted") {
       return res.status(403).json({ success: false, message: "Calls are available only after the match request is accepted" });
     }

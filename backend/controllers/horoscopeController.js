@@ -2,6 +2,7 @@ const Horoscope = require("../models/horoscope");
 const { calculateNatalChart, normalizeTimeOfBirth } = require("../services/astrologyService");
 const { resolveBirthLocationFromPlace } = require("../services/birthLocationService");
 const { getDashaTimeline, getDashaHouseActivations } = require("../services/dashaService");
+const { buildBirthCharts } = require("../services/birthChartService");
 
 // Public API accepts the user-friendly names below:
 // birthDate, birthTime (e.g. "4:45 PM"), and birthPlace.
@@ -30,7 +31,15 @@ const buildHoroscopeData = (body) => {
 const includeCalculatedChart = (horoscope) => {
   const data = horoscope.toObject();
   const chart = calculateNatalChart(horoscope);
-  return { ...data, sunSign: chart.sunSign, calculatedMoonSign: chart.moonSign, moonSignPrecision: chart.precision };
+  return {
+    ...data,
+    sunSign: chart.sunSign,
+    calculatedMoonSign: chart.moonSign,
+    moonSignPrecision: chart.precision,
+    // The drawable Lagna (D1) and Navamsa (D9) charts, derived from the same
+    // stored vedicChart. Sent inline so the chart screen needs one request.
+    charts: buildBirthCharts(data.vedicChart),
+  };
 };
 
 const hydrateBirthLocation = async (body) => {
@@ -77,7 +86,9 @@ const createHoroscope = async (req, res, next) => {
   try {
     const data = await hydrateBirthLocation(req.body);
     const horoscope = await Horoscope.create({ user: req.user._id, ...data });
-    res.status(201).json({ success: true, message: "Horoscope created", data: horoscope });
+    // Mirror /me and /update: the created chart is returned already hydrated
+    // with the derived sun/moon signs and the drawable birth charts.
+    res.status(201).json({ success: true, message: "Horoscope created", data: includeCalculatedChart(horoscope) });
   } catch (error) { next(error); }
 };
 
@@ -97,6 +108,24 @@ const updateHoroscope = async (req, res, next) => {
     Object.assign(horoscope, data);
     await horoscope.save();
     res.json({ success: true, message: "Horoscope updated", data: includeCalculatedChart(horoscope) });
+  } catch (error) { next(error); }
+};
+
+// GET /api/horoscope/charts?varga=d1,d9
+// The drawable birth charts (Lagna D1 + Navamsa D9 by default) for the
+// logged-in user, derived from the stored vedicChart. `/me` already carries the
+// same block; this endpoint exists so a client can refresh just the charts, or
+// ask for a different division (`varga=all`, `varga=d10`), without re-fetching
+// the whole horoscope.
+const getMyCharts = async (req, res, next) => {
+  try {
+    const horoscope = await Horoscope.findOne({ user: req.user._id }).lean();
+    if (!horoscope) return res.status(404).json({ success: false, message: "Horoscope not found" });
+
+    const data = buildBirthCharts(horoscope.vedicChart, {
+      vargas: req.query.varga ?? req.query.type,
+    });
+    res.json({ success: true, message: "Birth charts retrieved", data });
   } catch (error) { next(error); }
 };
 
@@ -173,4 +202,4 @@ const getMyDasha = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { createHoroscope, getMyHoroscope, updateHoroscope, getMyDasha, hydrateBirthLocation };
+module.exports = { createHoroscope, getMyHoroscope, updateHoroscope, getMyDasha, getMyCharts, hydrateBirthLocation };

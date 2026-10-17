@@ -1,4 +1,4 @@
-// Isolated numerology LLM service: Groq (primary) → Gemini → Cloudflare.
+// Isolated numerology LLM service: OpenRouter (primary) → Groq → Gemini → Cloudflare.
 // Same provider chain as astrology, but a SEPARATE system prompt and module
 // so numerology answers are never framed as Vedic astrology and the two
 // assistants cannot leak rules into each other.
@@ -22,17 +22,34 @@ const CLOUDFLARE_AI_TOKEN = process.env.CLOUDFLARE_AI_TOKEN;
 const CLOUDFLARE_MODEL = process.env.NUMERO_CLOUDFLARE_AI_MODEL || process.env.CLOUDFLARE_AI_MODEL || "@cf/meta/llama-3.3-70b-instruct";
 const CLOUDFLARE_API_BASE = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/run`;
 
+// OpenRouter config
+const OPENROUTER_ENABLED = process.env.OPENROUTER_ENABLED === 'true';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_MODEL = process.env.NUMERO_OPENROUTER_MODEL || process.env.OPENROUTER_MODEL || "nvidia/nemotron-3.5-lightning:free";
+const OPENROUTER_API_BASE = "https://openrouter.ai/api/v1/chat/completions";
+
 const MAX_ATTEMPTS = 3;
 const CF_MAX_ATTEMPTS = 2;
+const OR_MAX_ATTEMPTS = 2;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const providers = [
   {
+    name: 'openrouter',
+    client: null,
+    model: OPENROUTER_MODEL,
+    priority: 1,
+    enabled: OPENROUTER_ENABLED && !!OPENROUTER_API_KEY,
+    maxAttempts: OR_MAX_ATTEMPTS,
+    timeout: 180000,
+    healthCheck: checkOpenRouterHealth,
+  },
+  {
     name: 'groq',
     client: groq,
     model: GROQ_MODEL,
-    priority: 1,
+    priority: 2,
     enabled: !!process.env.GROQ_API_KEY,
     maxAttempts: MAX_ATTEMPTS,
     timeout: 30000,
@@ -41,7 +58,7 @@ const providers = [
     name: 'gemini',
     client: ai,
     model: MODEL,
-    priority: 2,
+    priority: 3,
     enabled: !!process.env.GEMINI_API_KEY,
     maxAttempts: MAX_ATTEMPTS,
     timeout: 30000,
@@ -50,13 +67,52 @@ const providers = [
     name: 'cloudflare',
     client: null,
     model: CLOUDFLARE_MODEL,
-    priority: 3,
+    priority: 4,
     enabled: CLOUDFLARE_ENABLED && !!CLOUDFLARE_ACCOUNT_ID && !!CLOUDFLARE_AI_TOKEN,
     maxAttempts: CF_MAX_ATTEMPTS,
     timeout: 60000,
     healthCheck: checkCloudflareHealth,
   },
-].filter(p => p.enabled && (p.client || p.name === 'cloudflare')).sort((a, b) => a.priority - b.priority);
+].filter(p => p.enabled && (p.client || p.healthCheck)).sort((a, b) => a.priority - b.priority);
+
+function openRouterHeaders() {
+  return {
+    'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+    'Content-Type': 'application/json',
+    'HTTP-Referer': process.env.CLIENT_URL || 'http://localhost:5173',
+    'X-Title': 'Astro Backend',
+  };
+}
+
+async function checkOpenRouterHealth() {
+  if (!OPENROUTER_ENABLED || !OPENROUTER_API_KEY) {
+    return { healthy: false, error: 'OpenRouter not configured' };
+  }
+  try {
+    const response = await fetch(OPENROUTER_API_BASE, {
+      method: 'POST',
+      headers: openRouterHeaders(),
+      body: JSON.stringify({
+        model: OPENROUTER_MODEL,
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 1,
+      }),
+      signal: AbortSignal.timeout(90000),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      return { healthy: false, error: `HTTP ${response.status}: ${err.error?.message || 'Unknown error'}` };
+    }
+    // HTTP 200 can still carry an error body — do not report a dead endpoint as healthy
+    const data = await response.json().catch(() => ({}));
+    if (data.error) {
+      return { healthy: false, error: `HTTP ${response.status}: ${data.error.message || 'Unknown error'}` };
+    }
+    return { healthy: true, model: OPENROUTER_MODEL };
+  } catch (e) {
+    return { healthy: false, error: `Connection failed: ${e.message}` };
+  }
+}
 
 async function checkCloudflareHealth() {
   if (!CLOUDFLARE_ENABLED || !CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_AI_TOKEN) {
@@ -139,11 +195,16 @@ function classifyError(providerName, error) {
   if (code === 401 || code === 403) {
     return { fatal: true, type: 'auth', retryable: false };
   }
-  if (code === 404 || message.includes('model not found') || message.includes('model_not_found')) {
+  if (code === 404 || message.includes('no endpoints found') || message.includes('no_endpoints_found') ||
+      message.includes('model not found') || message.includes('model_not_found')) {
     return { fatal: true, type: 'model_unavailable', retryable: false };
   }
-  if (code === 429 || code === 503 || code === 408 ||
-      /(high demand|unavailable|resource_exhausted|temporarily blocked|quota exceeded|rate limit)/i.test(message)) {
+  if (providerName === 'openrouter' && (code === 408 || /timeout/i.test(message) || error.name === 'AbortError')) {
+    // Never re-run a stalled 180s call — fail over to the next provider instead.
+    return { fatal: false, type: 'timeout', retryable: false };
+  }
+  if (code === 429 || code === 502 || code === 503 || code === 408 ||
+      /(high demand|unavailable|rate limit|rate_limit|resource_exhausted|temporarily blocked|quota exceeded)/i.test(message)) {
     return { fatal: false, type: 'rate_limit', retryable: true };
   }
   return { fatal: false, type: 'unknown', retryable: true };
@@ -158,7 +219,42 @@ async function callProvider(provider, userMessage) {
   try {
     let content;
 
-    if (name === 'groq') {
+    if (name === 'openrouter') {
+      const response = await fetch(OPENROUTER_API_BASE, {
+        method: 'POST',
+        headers: openRouterHeaders(),
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: NUMERO_SYSTEM_PROMPT },
+            { role: 'user', content: userMessage }
+          ],
+          temperature: 0.7,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw Object.assign(new Error(err.error?.message || `HTTP ${response.status}`), {
+          status: response.status,
+          code: response.status
+        });
+      }
+
+      const data = await response.json();
+      // OpenRouter can return HTTP 200 with an error object in the body
+      // (e.g. upstream provider overloaded) — surface it so classifyError can act on it.
+      if (data.error) {
+        throw Object.assign(new Error(data.error.message || 'OpenRouter upstream error'), {
+          status: data.error.code,
+          code: data.error.code
+        });
+      }
+      content = data.choices?.[0]?.message?.content
+        || data.choices?.[0]?.message?.reasoning
+        || '';
+    } else if (name === 'groq') {
       const response = await client.chat.completions.create({
         model,
         messages: [

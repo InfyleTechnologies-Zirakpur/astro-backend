@@ -2,18 +2,40 @@ const mongoose = require("mongoose");
 const User = require("../models/user");
 const Match = require("../models/match");
 const AstrologerProfile = require("../models/astrologerProfile");
-const FreeUsage = require("../models/freeUsage");
 const ConsultationQueue = require("../models/consultationQueue");
-const Wallet = require("../models/wallet");
-const WalletTransaction = require("../models/walletTransaction");
 const Review = require("../models/review");
 const { getIo, isUserInCall } = require("../services/socketHub");
-const { freeRemainingSecFor, MIN_PAID_BLOCK_MIN } = require("./astrologerController");
+const {
+  getOrCreateWallet,
+  freeRemainingSecFor,
+  settleConsultation,
+  ensureBillable,
+  billingPreview,
+  finalizeConsultation,
+  paidMinutesLeft,
+  MIN_PAID_BLOCK_MIN,
+} = require("../services/consultationBilling");
 
-const getOrCreateWallet = async (userId) => {
-  let wallet = await Wallet.findOne({ user: userId });
-  if (!wallet) wallet = await Wallet.create({ user: userId, balance: 0 });
-  return wallet;
+/// The bill fields the app reads back from `end` / `status`, built from the
+/// stored document (used for an already-closed session).
+const billFromMatch = (match) => {
+  const c = match.consultation || {};
+  const billableSec = c.billableSec || 0;
+  return {
+    match,
+    status: match.status,
+    durationSec: c.durationSec || 0,
+    freeSecGranted: c.freeSecGranted || 0,
+    billableSec,
+    billableMin: c.billedMin || Math.ceil(billableSec / 60),
+    dueAmount: Math.ceil(billableSec / 60) * (c.ratePerMin || 0),
+    amount: c.amount || 0,
+    chargedAmount: c.amount || 0,
+    paymentStatus: c.paymentStatus || "pending",
+    ratePerMin: c.ratePerMin || 0,
+    endedReason: c.endedReason || null,
+    insufficient: false,
+  };
 };
 
 // POST /api/consultations/request
@@ -43,16 +65,31 @@ const requestConsultation = async (req, res, next) => {
     const ratePerMin = channel === "chat" ? profile.rateChatPerMin : profile.rateCallPerMin;
     const freeRemainingSec = await freeRemainingSecFor(req.user._id, astrologerId, profile);
 
-    // Reuse an existing active consultation between this pair+channel if present
-    let match = await Match.findOne({
-      matchType: "consultation",
-      status: { $in: ["accepted", "active"] },
+    // A pair owns exactly ONE match document (unique index on userA+userB), so
+    // every request has to work with the doc that already exists. Looking only
+    // for an *active same-channel* session and then inserting a new doc meant
+    // any other state — session already ended, an earlier session on another
+    // channel, or a plain matchmaking match between the same pair — hit Mongo's
+    // E11000 duplicate key, which the global handler turned into
+    // 409 "A record with that value already exists" and the chat never opened.
+    const existing = await Match.findOne({
       $or: [
         { userA: req.user._id, userB: astrologerId },
         { userA: astrologerId, userB: req.user._id },
       ],
-      "consultation.channel": channel,
     });
+
+    // Join an in-progress session this client already owns instead of opening a
+    // second one. A session started for any channel is reused as-is: its clock
+    // and rate stay untouched (changing them mid-session would lose billable
+    // time), while the client decides on its own whether to show the chat or
+    // dial a call from the returned matchId.
+    const runningConsultation =
+      existing &&
+      existing.matchType === "consultation" &&
+      ["accepted", "active"].includes(existing.status) &&
+      String(existing.consultation?.client) === String(req.user._id);
+    let match = runningConsultation ? existing : null;
 
     const busy = isUserInCall(String(astrologerId));
 
@@ -77,37 +114,82 @@ const requestConsultation = async (req, res, next) => {
       });
     }
 
-    // Wallet gate only when no free time remains
+    // Free minutes come first; only once the pair's free window is used up does
+    // the client have to have paid — at least MIN_PAID_BLOCK_MIN minute(s) of
+    // balance — before the chat or call can continue. A running session the
+    // client can no longer pay for is closed here (and its final minute billed)
+    // instead of being handed back as a live-but-unpayable thread.
     if (freeRemainingSec <= 0) {
+      if (match) {
+        const gate = await ensureBillable(match);
+        if (!gate.ok && gate.reason !== "busy") {
+          await finalizeConsultation(match, { reason: "insufficient_balance" });
+          match = null;
+        }
+      }
       const wallet = await getOrCreateWallet(req.user._id);
       const minRequired = ratePerMin * MIN_PAID_BLOCK_MIN;
       if (wallet.balance < minRequired) {
         return res.status(402).json({
           success: false,
+          code: "INSUFFICIENT_BALANCE",
           message: `Insufficient balance. Minimum ₹${minRequired} required (${MIN_PAID_BLOCK_MIN} min). Please recharge.`,
-          data: { balance: wallet.balance, minRequired, ratePerMin, freeRemainingSec: 0 },
+          data: {
+            balance: wallet.balance,
+            minRequired,
+            ratePerMin,
+            freeRemainingSec: 0,
+            paidMinutesLeft: paidMinutesLeft(wallet.balance, ratePerMin),
+          },
         });
       }
     }
 
     if (!match) {
-      match = await Match.create({
-        userA: req.user._id,
-        userB: astrologerId,
-        matchType: "consultation",
-        status: "accepted",
-        requestedBy: req.user._id,
-        requestedTo: astrologerId,
-        respondedAt: new Date(),
-        consultation: {
+      if (existing) {
+        // Revive the pair's document instead of inserting a second one (the
+        // unique index would reject it): keep its id — chat history and both
+        // inboxes stay stable — but start a brand-new session on it. The old
+        // session was already ended, ran on another channel, or the doc was a
+        // matchmaking match this pair had created earlier.
+        match = existing;
+        match.matchType = "consultation";
+        match.status = "accepted";
+        match.requestedBy = req.user._id;
+        match.requestedTo = astrologerId;
+        match.respondedAt = new Date();
+        // A conversation deleted earlier must reappear when the consultation
+        // restarts, otherwise the chat opens but the tile never returns.
+        match.hiddenFor = (match.hiddenFor || [])
+          .filter((id) => String(id) !== String(req.user._id));
+        match.consultation = {
           astrologer: astrologerId,
           client: req.user._id,
           channel,
           ratePerMin,
           startedAt: new Date(),
           paymentStatus: "pending",
-        },
-      });
+        };
+        await match.save();
+      } else {
+        match = await Match.create({
+          userA: req.user._id,
+          userB: astrologerId,
+          matchType: "consultation",
+          status: "accepted",
+          requestedBy: req.user._id,
+          requestedTo: astrologerId,
+          respondedAt: new Date(),
+          consultation: {
+            astrologer: astrologerId,
+            client: req.user._id,
+            channel,
+            ratePerMin,
+            startedAt: new Date(),
+            paymentStatus: "pending",
+          },
+        });
+      }
     }
 
     const io = getIo();
@@ -136,7 +218,8 @@ const requestConsultation = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-// POST /api/consultations/:matchId/end — either participant; server computes free vs billable
+// POST /api/consultations/:matchId/end — either participant; the billing
+// service closes the clock and settles whatever minute was in progress.
 const endConsultation = async (req, res, next) => {
   try {
     if (!mongoose.isValidObjectId(req.params.matchId)) {
@@ -149,134 +232,89 @@ const endConsultation = async (req, res, next) => {
     });
     if (!match) return res.status(404).json({ success: false, message: "Consultation not found" });
     if (match.status === "ended") {
-      return res.json({ success: true, message: "Already ended", data: match });
-    }
-
-    const profile = await AstrologerProfile.findOne({ user: match.consultation.astrologer });
-    const limitSec = profile && profile.freeMinutesEnabled ? (profile.freeMinutesLimitMin ?? 10) * 60 : 0;
-    const usage = await FreeUsage.findOneAndUpdate(
-      { client: match.consultation.client, astrologer: match.consultation.astrologer },
-      { $setOnInsert: { freeSecondsUsed: 0, freeExhausted: false } },
-      { new: true, upsert: true }
-    );
-    const freeRemainingBefore = Math.max(0, limitSec - usage.freeSecondsUsed);
-
-    const startedAt = match.consultation.startedAt || match.createdAt;
-    const endedAt = new Date();
-    const durationSec = Math.max(0, Math.round((endedAt - new Date(startedAt)) / 1000));
-    const freeSecGranted = Math.min(durationSec, freeRemainingBefore);
-    const billableSec = durationSec - freeSecGranted;
-    const billableMin = Math.ceil(billableSec / 60);
-    const amount = billableMin * (match.consultation.ratePerMin || 0);
-
-    let paymentStatus = "free";
-    if (amount > 0) {
-      const clientWallet = await getOrCreateWallet(match.consultation.client);
-      if (clientWallet.balance < amount) {
-        paymentStatus = "failed";
-      } else {
-        clientWallet.balance -= amount;
-        await clientWallet.save();
-        await WalletTransaction.create({
-          user: match.consultation.client,
-          type: "debit",
-          amount,
-          balanceAfter: clientWallet.balance,
-          reason: "consultation_charge",
-          consultationMatch: match._id,
-          meta: { billableMin, ratePerMin: match.consultation.ratePerMin },
-        });
-        const astroWallet = await getOrCreateWallet(match.consultation.astrologer);
-        astroWallet.balance += amount;
-        await astroWallet.save();
-        await WalletTransaction.create({
-          user: match.consultation.astrologer,
-          type: "credit",
-          amount,
-          balanceAfter: astroWallet.balance,
-          reason: "consultation_earning",
-          consultationMatch: match._id,
-          meta: { billableMin, ratePerMin: match.consultation.ratePerMin },
-        });
-        paymentStatus = "deducted";
-      }
-    }
-
-    usage.freeSecondsUsed += freeSecGranted;
-    if (usage.freeSecondsUsed >= limitSec) usage.freeExhausted = true;
-    await usage.save();
-
-    match.status = "ended";
-    match.consultation.endedAt = endedAt;
-    match.consultation.durationSec = durationSec;
-    match.consultation.freeSecGranted = freeSecGranted;
-    match.consultation.billableSec = billableSec;
-    match.consultation.amount = amount;
-    match.consultation.paymentStatus = paymentStatus;
-    await match.save();
-
-    if (profile) {
-      profile.totalConsultations += 1;
-      profile.totalFreeMinutesGiven += Math.round(freeSecGranted / 60);
-      if (paymentStatus === "deducted") profile.totalEarnings += amount;
-      await profile.save();
-    }
-
-    // Promote next in queue
-    const nextQueued = await ConsultationQueue.findOne({ astrologer: match.consultation.astrologer, status: "waiting" }).sort({ createdAt: 1 });
-    const io = getIo();
-    if (io) {
-      io.to(`match:${String(match._id)}`).emit("consultation:ended", {
-        matchId: String(match._id),
-        durationSec,
-        freeSecGranted,
-        billableSec,
-        billableMin,
-        amount,
-        paymentStatus,
+      return res.json({
+        success: true,
+        message: "Already ended",
+        data: billFromMatch(match),
       });
-      if (nextQueued) {
-        io.to(`user:${String(nextQueued.client)}`).emit("consultation:turn", { queueId: nextQueued._id, astrologerId: String(match.consultation.astrologer) });
-      }
     }
+
+    const reason =
+      String(match.consultation.client) === String(req.user._id) ? "user" : "astrologer";
+    const summary = await finalizeConsultation(match, { reason });
 
     res.json({
       success: true,
-      message: paymentStatus === "failed" ? "Consultation ended. Payment failed — please recharge." : "Consultation ended",
-      data: { match, durationSec, freeSecGranted, billableSec, billableMin, amount, paymentStatus },
+      message:
+        summary.paymentStatus === "failed"
+          ? "Consultation ended. Wallet balance ran out — please recharge."
+          : "Consultation ended",
+      data: {
+        match: summary.match,
+        durationSec: summary.durationSec,
+        freeSecGranted: summary.freeSecGranted,
+        billableSec: summary.billableSec,
+        billableMin: summary.billableMin,
+        dueAmount: summary.dueAmount,
+        amount: summary.amount,
+        chargedAmount: summary.amount,
+        paymentStatus: summary.paymentStatus,
+        reason,
+        endedReason: reason,
+      },
     });
   } catch (error) { next(error); }
 };
 
-// GET /api/consultations/:matchId/status — remaining free + billing preview
+// GET /api/consultations/:matchId/status — billing meter + remaining paid time
 const getConsultationStatus = async (req, res, next) => {
   try {
     const match = await Match.findOne({
       _id: req.params.matchId,
       matchType: "consultation",
       $or: [{ userA: req.user._id }, { userB: req.user._id }],
-    }).lean();
+    });
     if (!match) return res.status(404).json({ success: false, message: "Consultation not found" });
-    const profile = await AstrologerProfile.findOne({ user: match.consultation.astrologer }).lean();
-    const limitSec = profile && profile.freeMinutesEnabled ? (profile.freeMinutesLimitMin ?? 10) * 60 : 0;
-    const usage = await FreeUsage.findOne({ client: match.consultation.client, astrologer: match.consultation.astrologer }).lean();
-    const freeRemainingSec = Math.max(0, limitSec - (usage?.freeSecondsUsed || 0));
-    const startedAt = match.consultation.startedAt || match.createdAt;
-    const elapsedSec = match.status === "ended"
-      ? match.consultation.durationSec
-      : Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 1000));
+
+    // Running the meter here is what makes the client's countdown honest: the
+    // poll both bills the elapsed minutes and reports how many are still paid
+    // for. A session that just ran out of money is closed on the spot.
+    const summary = await settleConsultation(match);
+    if (summary && !summary.skipped && summary.insufficient && match.status !== "ended") {
+      await finalizeConsultation(match, { reason: "insufficient_balance" });
+    }
+    if (summary && !summary.skipped && match.status === "ended") {
+      summary.status = "ended";
+    }
+
+    const bill = summary && !summary.skipped ? billingPreview(summary) : null;
+    const stored = billFromMatch(match);
+    const freeRemainingSec = bill?.freeRemainingSec ?? 0;
+    // The meter belongs to the payer (the client). Only the client is asked to
+    // recharge — the astrologer keeps their composer so they can nudge them,
+    // and the session itself is stopped by the billing sweep.
+    const isPayer =
+      String(match.consultation.client) === String(req.user._id);
+
     res.json({
       success: true,
       data: {
         matchId: match._id,
         status: match.status,
-        elapsedSec,
+        elapsedSec: bill?.durationSec ?? stored.durationSec,
         freeRemainingSec,
-        freeSecGranted: match.consultation.freeSecGranted,
-        ratePerMin: match.consultation.ratePerMin,
-        isPaidPhase: elapsedSec >= freeRemainingSec + (match.consultation.freeSecGranted || 0),
-        amount: match.consultation.amount,
-        paymentStatus: match.consultation.paymentStatus,
+        freeSecGranted: bill?.freeSecGranted ?? stored.freeSecGranted,
+        ratePerMin: bill?.ratePerMin ?? stored.ratePerMin,
+        isPaidPhase: match.status !== "ended" && freeRemainingSec <= 0,
+        billableMin: bill?.billableMin ?? stored.billableMin,
+        dueAmount: bill?.dueAmount ?? stored.dueAmount,
+        amount: bill?.chargedAmount ?? stored.amount,
+        chargedAmount: bill?.chargedAmount ?? stored.amount,
+        paymentStatus: bill?.paymentStatus ?? stored.paymentStatus,
+        walletBalance: bill?.walletBalance ?? 0,
+        paidMinutesLeft: bill?.paidMinutesLeft ?? paidMinutesLeft(0, stored.ratePerMin),
+        requiresRecharge: isPayer && (bill?.requiresRecharge ?? false),
+        endedReason: match.consultation.endedReason || null,
       },
     });
   } catch (error) { next(error); }
