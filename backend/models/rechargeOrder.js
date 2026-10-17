@@ -10,6 +10,11 @@ const rechargeOrderSchema = new mongoose.Schema(
     currency: { type: String, default: "INR" },
     razorpayOrderId: { type: String, required: true, unique: true },
     receipt: { type: String, default: null },
+    paymentMethod: {
+      type: String,
+      enum: ["upi", "card", "netbanking", "wallet", "all"],
+      default: "upi",
+    },
     status: {
       type: String,
       enum: ["created", "paid", "failed", "expired"],

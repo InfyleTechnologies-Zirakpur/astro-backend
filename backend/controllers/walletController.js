@@ -5,8 +5,30 @@ const { getClient, isConfigured, verifyPaymentSignature, verifyWebhookSignature 
 
 const MIN_RECHARGE = 10;
 const MAX_RECHARGE = 100000;
+const ALLOWED_METHODS = ["upi", "card", "netbanking", "wallet", "all"];
 
 const currency = () => (process.env.CURRENCY || "INR").toUpperCase();
+
+// Builds Razorpay Checkout display config that surfaces the chosen method first.
+// Razorpay Orders API has no method param — method preference lives in Checkout.
+const buildCheckoutConfig = (method) => {
+  if (method === "all") return undefined;
+  const blocks = {
+    upi: method === "upi"
+      ? { name: "Pay via UPI", instruments: [{ method: "upi" }] }
+      : { name: "UPI", instruments: [{ method: "upi" }] },
+  };
+  if (method === "card") blocks.card = { name: "Card", instruments: [{ method: "card" }] };
+  if (method === "netbanking") blocks.netbanking = { name: "Netbanking", instruments: [{ method: "netbanking" }] };
+  if (method === "wallet") blocks.wallet = { name: "Wallet", instruments: [{ method: "wallet" }] };
+  return {
+    display: {
+      blocks,
+      sequence: [`block.${method}`, ...Object.keys(blocks).filter((k) => k !== method).map((k) => `block.${k}`)],
+      preferences: { show_default_blocks: true },
+    },
+  };
+};
 
 const getOrCreateWallet = async (userId) => {
   let wallet = await Wallet.findOne({ user: userId });
@@ -57,6 +79,10 @@ const createRechargeOrder = async (req, res, next) => {
       });
     }
     const amountPaise = Math.round(amount * 100);
+    const method = String(req.body.method || "upi").toLowerCase();
+    if (!ALLOWED_METHODS.includes(method)) {
+      return res.status(400).json({ success: false, message: `method must be one of: ${ALLOWED_METHODS.join(", ")}` });
+    }
     const receipt = `rc_${req.user._id}_${Date.now()}`;
     const client = getClient();
     const order = await client.orders.create({ amount: amountPaise, currency: currency(), receipt });
@@ -68,13 +94,31 @@ const createRechargeOrder = async (req, res, next) => {
       currency: currency(),
       razorpayOrderId: order.id,
       receipt,
+      paymentMethod: method,
       status: "created",
     });
 
     res.status(201).json({
       success: true,
       message: "Order created",
-      data: { orderId: order.id, amount, amountPaise, currency: currency(), keyId: process.env.RAZORPAY_KEY_ID },
+      data: {
+        orderId: order.id,
+        amount,
+        amountPaise,
+        currency: currency(),
+        method,
+        keyId: process.env.RAZORPAY_KEY_ID,
+        // Pass this straight into new Razorpay({...}).open() on the client.
+        checkout: {
+          key: process.env.RAZORPAY_KEY_ID,
+          amount: amountPaise,
+          currency: currency(),
+          order_id: order.id,
+          name: "Astro Wallet Recharge",
+          prefill: { method },
+          config: buildCheckoutConfig(method),
+        },
+      },
     });
   } catch (error) { next(error); }
 };
@@ -130,7 +174,7 @@ const verifyRecharge = async (req, res, next) => {
       amount: rechargeOrder.amount,
       providerPaymentId: paymentId,
       orderId,
-      method: "razorpay",
+      method: rechargeOrder.paymentMethod || "razorpay",
     });
     rechargeOrder.status = "paid";
     rechargeOrder.razorpayPaymentId = paymentId;
@@ -171,7 +215,7 @@ const rechargeWebhook = async (req, res, next) => {
             amount: rechargeOrder.amount,
             providerPaymentId: payment.id,
             orderId: payment.order_id,
-            method: "razorpay_webhook",
+            method: rechargeOrder.paymentMethod || "razorpay_webhook",
           });
           rechargeOrder.status = "paid";
           rechargeOrder.razorpayPaymentId = payment.id;
