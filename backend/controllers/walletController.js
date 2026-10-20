@@ -79,7 +79,7 @@ const createRechargeOrder = async (req, res, next) => {
       });
     }
     const amountPaise = Math.round(amount * 100);
-    const method = String(req.body.method || "upi").toLowerCase();
+    const method = String(req.body.method || "all").toLowerCase();
     if (!ALLOWED_METHODS.includes(method)) {
       return res.status(400).json({ success: false, message: `method must be one of: ${ALLOWED_METHODS.join(", ")}` });
     }

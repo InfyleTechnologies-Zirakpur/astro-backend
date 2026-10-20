@@ -80,7 +80,7 @@ const listAstrologers = async (req, res, next) => {
         const astrologerId = String(p.user);
         const freeRemainingSec =
           req.user && String(req.user._id) !== astrologerId
-            ? await freeRemainingSecFor(req.user._id, p.user, p)
+            ? await freeRemainingSecFor(req.user._id, p)
             : (p.freeMinutesLimitMin ?? 10) * 60;
         return toCard(p, {
           isBusy: isUserInCall(astrologerId),
@@ -110,7 +110,7 @@ const getAstrologerDetail = async (req, res, next) => {
     if (!profile) return res.status(404).json({ success: false, message: "Astrologer profile not found" });
 
     const freeRemainingSec = req.user
-      ? await freeRemainingSecFor(req.user._id, user._id, profile)
+      ? await freeRemainingSecFor(req.user._id, profile)
       : (profile.freeMinutesLimitMin ?? 10) * 60;
 
     const recentReviews = await Review.find({ astrologer: user._id })

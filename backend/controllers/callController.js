@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const { AccessToken } = require("livekit-server-sdk");
 const Match = require("../models/match");
+const { ensureBillable } = require("../services/consultationBilling");
 
 const createCallToken = async (req, res, next) => {
   try {
@@ -63,6 +64,16 @@ const createCallToken = async (req, res, next) => {
       ttl: "1h",
     });
     accessToken.addGrant({ roomJoin: true, room: roomName, canPublish: true, canSubscribe: true });
+
+    // Mark the call as connected so billing starts from this moment, not from
+    // when the consultation was created. This ensures we only charge for actual
+    // call time, not ringing/connection time.
+    if (match.matchType === "consultation" && !match.consultation.callConnectedAt) {
+      await Match.updateOne(
+        { _id: match._id },
+        { $set: { "consultation.callConnectedAt": new Date() } }
+      );
+    }
 
     res.json({
       success: true,

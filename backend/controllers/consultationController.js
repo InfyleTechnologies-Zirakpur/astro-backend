@@ -63,7 +63,7 @@ const requestConsultation = async (req, res, next) => {
     }
 
     const ratePerMin = channel === "chat" ? profile.rateChatPerMin : profile.rateCallPerMin;
-    const freeRemainingSec = await freeRemainingSecFor(req.user._id, astrologerId, profile);
+    const freeRemainingSec = await freeRemainingSecFor(req.user._id, profile);
 
     // A pair owns exactly ONE match document (unique index on userA+userB), so
     // every request has to work with the doc that already exists. Looking only

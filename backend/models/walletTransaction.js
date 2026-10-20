@@ -8,12 +8,26 @@ const walletTransactionSchema = new mongoose.Schema(
     balanceAfter: { type: Number, required: true },
     reason: {
       type: String,
-      enum: ["recharge", "consultation_charge", "consultation_earning", "refund"],
+      enum: [
+        "recharge",
+        "consultation_charge",
+        "consultation_earning",
+        "consultation_charge_refund",
+        "refund",
+        "numerology_charge",
+      ],
       required: true,
     },
     consultationMatch: { type: mongoose.Schema.Types.ObjectId, ref: "Match", default: null },
-    // Gateway payment id for idempotent recharge credits (sparse: only set on recharges)
-    providerPaymentId: { type: String, default: null },
+    // Gateway payment id for idempotent recharge credits.
+    //
+    // No `default: null` here on purpose: the unique index below is *sparse*,
+    // and a sparse index only skips documents where the field is ABSENT — an
+    // explicit `null` is still a value, so every non-recharge transaction
+    // (consultation charge, numerology charge, refund) would collide on
+    // `providerPaymentId: null` and fail with E11000 after the first one.
+    // Leaving it undefined keeps those documents out of the index entirely.
+    providerPaymentId: { type: String, default: undefined },
     meta: { type: mongoose.Schema.Types.Mixed, default: undefined },
   },
   { timestamps: true }
