@@ -6,6 +6,10 @@ const ConsultationQueue = require("../models/consultationQueue");
 const Review = require("../models/review");
 const { getIo, isUserInCall } = require("../services/socketHub");
 const {
+  sendConsultationNotification,
+  sendQueueNotification,
+} = require("../services/notificationService");
+const {
   getOrCreateWallet,
   freeRemainingSecFor,
   settleConsultation,
@@ -107,6 +111,16 @@ const requestConsultation = async (req, res, next) => {
         io.to(`user:${String(astrologerId)}`).emit("consultation:queue-update", { astrologerId: String(astrologerId), waiting: waitingCount + 1 });
         io.to(`user:${String(req.user._id)}`).emit("consultation:queued", { queueId: queueEntry._id, position: waitingCount + 1, freeRemainingSec, ratePerMin });
       }
+      // The socket only reaches a console that is open, so the waiting client
+      // is pushed as well — a person in the queue must never be invisible.
+      sendQueueNotification({
+        astrologerId,
+        clientId: req.user._id,
+        clientName: req.user.name,
+        position: waitingCount + 1,
+      }).catch((error) =>
+        console.error("[push] queue notification failed:", error?.message || error),
+      );
       return res.status(202).json({
         success: true,
         message: "Astrologer is busy. You are in the queue.",
@@ -202,6 +216,21 @@ const requestConsultation = async (req, res, next) => {
         ratePerMin,
       });
     }
+
+    // The socket event above only reaches a console that is open and
+    // connected, so the astrologer is pushed as well — a request has to land
+    // even when their app is closed.
+    sendConsultationNotification({
+      astrologerId,
+      astrologerName: astrologer.name || "",
+      clientId: req.user._id,
+      clientName: req.user.name,
+      matchId: match._id,
+      channel,
+      ratePerMin,
+    }).catch((error) =>
+      console.error("[push] consultation notification failed:", error?.message || error),
+    );
 
     res.status(201).json({
       success: true,
