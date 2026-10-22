@@ -14,7 +14,7 @@ const {
   calculateVedicChart,
   getNakshatra,
 } = require("../services/vedicAstrologyService");
-const { calculateGunaMilan } = require("../services/gunaMilanService");
+const { calculateGunaMilan, VARNA, GANA, NADI } = require("../services/gunaMilanService");
 const { resolveBirthLocationFromPlace } = require("../services/birthLocationService");
 
 const MANGAL_HOUSES = [1, 2, 4, 7, 8, 12];
@@ -145,9 +145,12 @@ const describePerson = (person, chart) => {
     lagna: ascendant ? ascendant.rashi : "",
     navamsaLagna: ascendant ? ascendant.navamshaSign || "" : "",
     mangalDosha,
-    varna: "",
-    gana: "",
-    nadi: "",
+    // Varna comes from the Moon sign; Gana and Nadi from the Moon nakshatra.
+    // These are the same tables the Ashtakoot scoring uses, so the value
+    // shown here can never disagree with the value that was scored.
+    varna: chart.moonRashi ? VARNA[chart.moonRashi] || "" : "",
+    gana: moonNakshatra ? GANA[moonNakshatra.index] || "" : "",
+    nadi: moonNakshatra ? NADI[moonNakshatra.index] || "" : "",
     moonLongitude,
     hasFullChart: chart.precision === "full",
   };

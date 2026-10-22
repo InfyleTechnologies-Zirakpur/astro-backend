@@ -50,7 +50,7 @@ const {
   getRashi,
   degreeInSign,
   signIndexOf,
-  getPlanetSiderealLongitudes,
+  getRetrogradeMap,
 } = require("./vedicAstrologyService");
 const { getVargaSign, isVargottama } = require("./vedicVargaService");
 
@@ -91,28 +91,25 @@ const angularDistance = (lon, target) => {
  * Retrograde status from real ephemeris motion.
  *
  * A planet is retrograde when its apparent geocentric longitude is DECREASING.
- * Sampling the signed change over a ~1 day interval is robust for every body
- * here; sampling over a few hours would be swamped by floating point noise for
- * the slower bodies. A zero delta is reported as not retrograde rather than
- * guessed either way, since "stationary" is a real (if brief) state.
+ * Sampling the signed change over an interval is robust for every body here.
+ *
+ * This delegates to the chart engine's single retrograde implementation
+ * (vedicAstrologyService.getRetrogradeMap) so the strength engine and the
+ * chart can never report the same planet as retrograde in one place and direct
+ * in the other — the two used to be computed separately, with different
+ * reference frames and different sampling windows, and they disagreed often
+ * enough to change the rule 6.1 multiplier of a planet.
+ *
+ * Note that the lunar nodes are always reported as retrograde: that is a
+ * definition (the nodes have no orbit of their own), not a measurement, and
+ * measuring them lets the true node's periodic perturbation flip them to
+ * "direct" for stretches of time — which would silently strip Rahu and Ketu
+ * of the x3 retrograde multiplier the corpus gives them.
  *
  * @param {Date} utcDate
- * @returns {Object<number, boolean>}
+ * @returns {Object<string, boolean>}
  */
-const getRetrogradeStatus = (utcDate) => {
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  const before = getPlanetSiderealLongitudes(utcDate).sidereal;
-  const after = getPlanetSiderealLongitudes(new Date(utcDate.getTime() + DAY_MS)).sidereal;
-
-  const out = {};
-  for (const name of Object.keys(before)) {
-    const delta = (((after[name] - before[name]) % 360) + 360) % 360;
-    // Normalise the change into (-180, 180]: the true signed motion.
-    const signed = delta > 180 ? delta - 360 : delta;
-    out[name] = signed < 0;
-  }
-  return out;
-};
+const getRetrogradeStatus = (utcDate) => getRetrogradeMap(utcDate);
 
 /**
  * Combustion, split into the part that is corpus-grounded (4.8: the RELATION

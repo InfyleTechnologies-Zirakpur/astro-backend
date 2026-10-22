@@ -28,6 +28,57 @@ const buildHoroscopeData = (body) => {
   return data;
 };
 
+// Vimshottari dasha for a stored horoscope, computed on READ.
+//
+// Dasha is a time-dependent layer, so it is never stored — a stored dasha
+// silently goes stale. Both the chart endpoint and /api/horoscope/dasha build
+// it here from the stored chart, so the two can never disagree.
+//
+// Returns null when there is not enough information (no chart, no Moon
+// longitude, or a date before the user's birth).
+const buildDashaPayload = (horoscope, at = new Date()) => {
+  const moonLongitude = horoscope?.vedicChart?.planets?.Moon?.longitude;
+  if (!Number.isFinite(moonLongitude)) return null;
+
+  // Dasha periods are anchored to the birth instant, so the stored timezone
+  // offset has to be applied rather than using raw dateOfBirth, which
+  // Mongoose hands back as UTC midnight.
+  const dateOfBirth = horoscope.dateOfBirth instanceof Date
+    ? horoscope.dateOfBirth
+    : new Date(horoscope.dateOfBirth);
+  if (Number.isNaN(dateOfBirth.getTime())) return null;
+
+  const normalizedTime = normalizeTimeOfBirth(horoscope.timeOfBirth) || "00:00";
+  const [hh, mm] = normalizedTime.split(":").map(Number);
+  const localMillis = Date.UTC(
+    dateOfBirth.getUTCFullYear(),
+    dateOfBirth.getUTCMonth(),
+    dateOfBirth.getUTCDate(),
+    hh, mm
+  );
+  const birthInstant = new Date(localMillis - (horoscope.timeZoneOffsetMinutes || 0) * 60 * 1000);
+
+  const timeline = getDashaTimeline({
+    moonSiderealLongitude: moonLongitude,
+    birthDate: birthInstant,
+    atDate: at,
+  });
+  if (!timeline.current) return null;
+
+  return {
+    asOf: at,
+    balanceAtBirth: timeline.balance,
+    current: timeline.current,
+    antardashas: timeline.antardashas,
+    pratyantardashas: timeline.pratyantardashas,
+    houseActivations: getDashaHouseActivations({ planets: horoscope.vedicChart.planets, timeline }),
+    upcomingMahadashas: timeline.mahadashas
+      .filter((m) => m.start > at)
+      .slice(0, 4)
+      .map(({ planet, start, end, years }) => ({ planet, start, end, years })),
+  };
+};
+
 const includeCalculatedChart = (horoscope) => {
   const data = horoscope.toObject();
   const chart = calculateNatalChart(horoscope);
@@ -39,6 +90,10 @@ const includeCalculatedChart = (horoscope) => {
     // The drawable Lagna (D1) and Navamsa (D9) charts, derived from the same
     // stored vedicChart. Sent inline so the chart screen needs one request.
     charts: buildBirthCharts(data.vedicChart),
+    // The running Vimshottari dasha travels with the chart: a chart without
+    // its dasha is only half the answer, and the app used to have to make a
+    // second request to get it.
+    dasha: buildDashaPayload(data),
   };
 };
 
@@ -157,26 +212,8 @@ const getMyDasha = async (req, res, next) => {
       at = parsed;
     }
 
-    // Dasha periods are anchored to the birth instant, so the stored timezone
-    // offset has to be applied rather than using raw dateOfBirth, which
-    // Mongoose hands back as UTC midnight.
-    const normalizedTime = normalizeTimeOfBirth(horoscope.timeOfBirth) || "00:00";
-    const [hh, mm] = normalizedTime.split(":").map(Number);
-    const localMillis = Date.UTC(
-      horoscope.dateOfBirth.getUTCFullYear(),
-      horoscope.dateOfBirth.getUTCMonth(),
-      horoscope.dateOfBirth.getUTCDate(),
-      hh, mm
-    );
-    const birthInstant = new Date(localMillis - (horoscope.timeZoneOffsetMinutes || 0) * 60 * 1000);
-
-    const timeline = getDashaTimeline({
-      moonSiderealLongitude: moonLongitude,
-      birthDate: birthInstant,
-      atDate: at,
-    });
-
-    if (!timeline.current) {
+    const dasha = buildDashaPayload(horoscope, at);
+    if (!dasha) {
       return res.status(400).json({
         success: false,
         message: `The requested date (${at.toISOString().slice(0, 10)}) is before this user's birth date.`,
@@ -186,20 +223,9 @@ const getMyDasha = async (req, res, next) => {
     res.json({
       success: true,
       message: "Vimshottari dasha retrieved",
-      data: {
-        asOf: at,
-        balanceAtBirth: timeline.balance,
-        current: timeline.current,
-        antardashas: timeline.antardashas,
-        pratyantardashas: timeline.pratyantardashas,
-        houseActivations: getDashaHouseActivations({ planets: horoscope.vedicChart.planets, timeline }),
-        upcomingMahadashas: timeline.mahadashas
-          .filter((m) => m.start > at)
-          .slice(0, 4)
-          .map(({ planet, start, end, years }) => ({ planet, start, end, years })),
-      },
+      data: dasha,
     });
   } catch (error) { next(error); }
 };
 
-module.exports = { createHoroscope, getMyHoroscope, updateHoroscope, getMyDasha, getMyCharts, hydrateBirthLocation };
+module.exports = { createHoroscope, getMyHoroscope, updateHoroscope, getMyDasha, getMyCharts, hydrateBirthLocation, buildDashaPayload };

@@ -17,6 +17,21 @@ const buildDoc = (overrides = {}) =>
     ...overrides,
   });
 
+test("the Moon's nakshatra is derived from the chart instead of staying blank", async () => {
+  const doc = buildDoc();
+  await doc.validate();
+
+  assert.ok(doc.vedicChart.moonNakshatra.name, "the chart has a nakshatra");
+  assert.equal(doc.nakshatra, doc.vedicChart.moonNakshatra.name);
+});
+
+test("a user-supplied nakshatra is not overwritten by the derived one", async () => {
+  const doc = buildDoc({ nakshatra: "Chitra" });
+  await doc.validate();
+
+  assert.equal(doc.nakshatra, "Chitra");
+});
+
 test("the pre-validate hook computes vedicChart and vedicAnalysis", async () => {
   const doc = buildDoc();
   await doc.validate();

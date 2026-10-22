@@ -65,8 +65,19 @@ test("the endpoint returns a full Kundli Milan for a couple", async () => {
   assert.equal(data.girl.lagna, "Gemini");
 
   // The Moon longitudes let the client re-score the match with its own rules.
-  assert.ok(Math.abs(data.boy.moonLongitude - 138.77478) < 0.05);
-  assert.ok(Math.abs(data.girl.moonLongitude - 121.23532) < 0.05);
+  // These are the geocentric apparent sidereal longitudes (Lahiri), matching
+  // Swiss Ephemeris to within 0.4 arcseconds.
+  assert.ok(Math.abs(data.boy.moonLongitude - 137.80614) < 0.05);
+  assert.ok(Math.abs(data.girl.moonLongitude - 120.61407) < 0.05);
+
+  // Varna comes from the Moon sign, gana and nadi from the Moon nakshatra.
+  // They used to be hard-coded empty strings.
+  assert.equal(data.boy.varna, "Kshatriya"); // Leo
+  assert.equal(data.girl.varna, "Kshatriya"); // Leo
+  assert.equal(data.boy.gana, "Manushya"); // Purva Phalguni
+  assert.equal(data.girl.gana, "Rakshasa"); // Magha
+  assert.equal(data.boy.nadi, "Madhya"); // Purva Phalguni
+  assert.equal(data.girl.nadi, "Antya"); // Magha
 });
 
 test("the Ashtakoot factors add up to the 36 point maximum", async () => {
