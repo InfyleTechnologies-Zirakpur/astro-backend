@@ -1,7 +1,15 @@
 const NumerologyProfile = require("../models/numerologyProfile");
 const NumeroConversation = require("../models/numeroConversation");
 const { askNumeroQuestion } = require("../services/numerology/numeroRagService");
-const { buildNumeroContext, normalizeFullName, parseDateInput } = require("../services/numerology/numerologyService");
+const {
+  buildNumeroContext,
+  normalizeFullName,
+  parseDateInput,
+  calculateMulank,
+  calculateBhagyank,
+  calculateNameNumber,
+} = require("../services/numerology/numerologyService");
+const numeroBilling = require("../services/numeroBillingService");
 
 // PUT /api/numerology/profile — create or update the caller's name + DOB.
 const upsertProfile = async (req, res, next) => {
@@ -16,9 +24,29 @@ const upsertProfile = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "dateOfBirth must be a valid past date (YYYY-MM-DD or DD/MM/YYYY)" });
     }
 
+    // `findOneAndUpdate` does NOT run the schema's pre('validate') hook, so the
+    // deterministic Chaldean numbers must be computed here and set explicitly.
+    // Without this the profile is stored with no mulank/bhagyank/nameNumber and
+    // the app's numbers card shows dashes.
+    const mulank = calculateMulank(dt);
+    const bhagyank = calculateBhagyank(dt);
+    const nameNumber = calculateNameNumber(cleanName);
+    const numeroContext = buildNumeroContext({ fullName: cleanName, dateOfBirth: dt });
+    if (!numeroContext) {
+      return res.status(400).json({ success: false, message: "fullName must contain at least one A-Z letter" });
+    }
+
     const profile = await NumerologyProfile.findOneAndUpdate(
       { user: req.user._id },
-      { user: req.user._id, fullName: cleanName, dateOfBirth: dt },
+      {
+        user: req.user._id,
+        fullName: cleanName,
+        dateOfBirth: dt,
+        mulank,
+        bhagyank,
+        nameNumber,
+        numeroContext,
+      },
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     ).lean();
 
@@ -55,6 +83,23 @@ const ask = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "question is too long (max 1000 characters)" });
     }
 
+    // Billing gate: check free questions or wallet balance before answering.
+    const gate = await numeroBilling.ensureBillable(req.user._id);
+    if (!gate.ok) {
+      return res.status(402).json({
+        success: false,
+        message: "Free questions exhausted. Please recharge your wallet to continue.",
+        code: "INSUFFICIENT_BALANCE",
+        data: {
+          freeRemaining: gate.freeRemaining,
+          freeQuestionsUsed: gate.freeQuestionsUsed,
+          freeQuestionsLimit: gate.freeQuestionsLimit,
+          walletBalance: gate.walletBalance,
+          pricePerQuestion: gate.pricePerQuestion,
+        },
+      });
+    }
+
     let numeroContext = null;
     if (fullName || dateOfBirth) {
       numeroContext = buildNumeroContext({ fullName: fullName, dateOfBirth: dateOfBirth });
@@ -69,18 +114,82 @@ const ask = async (req, res, next) => {
       numeroContext = profile.numeroContext;
     }
 
-    const result = await askNumeroQuestion(question.trim(), { numeroContext });
+    // Charge BEFORE the answer is generated: the wallet is debited and the free
+    // question burned first, so a slow/failed LLM call can never hand out free
+    // answers. If the answer fails, the charge is given back below.
+    let consumption;
+    try {
+      consumption = await numeroBilling.consumeQuestion(req.user._id, {
+        pricePerQuestion: gate.pricePerQuestion,
+      });
+    } catch (chargeError) {
+      if (chargeError.code === "INSUFFICIENT_BALANCE") {
+        return res.status(402).json({
+          success: false,
+          message: "Free questions exhausted. Please recharge your wallet to continue.",
+          code: "INSUFFICIENT_BALANCE",
+          data: {
+            freeRemaining: 0,
+            walletBalance: chargeError.walletBalance,
+            pricePerQuestion: chargeError.pricePerQuestion,
+          },
+        });
+      }
+      throw chargeError;
+    }
+
+    let result;
+    try {
+      result = await askNumeroQuestion(question.trim(), { numeroContext });
+    } catch (askError) {
+      // The user got no answer, so they must not be charged for it.
+      await numeroBilling.refundQuestion(req.user._id, consumption).catch(() => {});
+      throw askError;
+    }
+
     await NumeroConversation.create({
       user: req.user._id,
       question: question.trim(),
       answer: result.answer,
       sources: result.sources,
       numeroContext,
+      billing: consumption,
     });
-    res.json({ success: true, message: "Answer generated", data: { ...result, numeroContext } });
+    res.json({
+      success: true,
+      message: "Answer generated",
+      data: {
+        ...result,
+        numeroContext,
+        billing: {
+          ...consumption,
+          pricePerQuestion: gate.pricePerQuestion,
+        },
+      },
+    });
   } catch (error) {
     next(error);
   }
+};
+
+// GET /api/numerology/billing — free questions remaining + wallet balance.
+const getBilling = async (req, res, next) => {
+  try {
+    const freeRemaining = await numeroBilling.freeQuestionsRemaining(req.user._id);
+    const freeUsage = await numeroBilling.getOrCreateFreeUsage(req.user._id);
+    const wallet = await numeroBilling.getOrCreateWallet(req.user._id);
+    res.json({
+      success: true,
+      data: {
+        freeRemaining,
+        freeQuestionsUsed: freeUsage.freeQuestionsUsed,
+        freeQuestionsLimit: freeUsage.freeQuestionsLimit,
+        freeExhausted: freeUsage.freeExhausted,
+        walletBalance: wallet.balance,
+        pricePerQuestion: numeroBilling.PRICE_PER_QUESTION_DEFAULT,
+      },
+    });
+  } catch (error) { next(error); }
 };
 
 const getHistory = async (req, res, next) => {
@@ -99,4 +208,4 @@ const getHistory = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { upsertProfile, getProfile, ask, getHistory };
+module.exports = { upsertProfile, getProfile, ask, getHistory, getBilling };

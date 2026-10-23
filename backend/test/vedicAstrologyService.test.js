@@ -17,23 +17,34 @@ const angularDifference = (first, second) => {
   return Math.min(difference, 360 - difference);
 };
 
-test("full Vedic charts use topocentric planetary positions when birth coordinates exist", () => {
+test("full Vedic charts use geocentric planetary positions even when birth coordinates exist", () => {
   const chart = calculateVedicChart(BIRTH);
-  assert.equal(chart.positionReference, "topocentric");
+  assert.equal(chart.positionReference, "geocentric");
 
   const instant = new Date(chart.birthInstant);
+
+  // The chart's Moon is the geocentric apparent position, converted to the
+  // sidereal zodiac with the true (nutation-corrected) Lahiri ayanamsha.
+  const moonTropical = Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body.Moon, instant, true)).elon;
+  const expectedMoonLongitude = toSidereal(moonTropical, instant);
+  assert.ok(angularDifference(chart.planets.Moon.longitude, expectedMoonLongitude) < 1e-10);
+
+  // A topocentric Moon would differ by up to ~1 deg (the Moon's diurnal
+  // parallax). That is enough to move it into a neighbouring nakshatra and
+  // shift the whole Vimshottari dasha chain by months, so the chart must
+  // never drift back to it.
   const observer = new Astronomy.Observer(BIRTH.latitude, BIRTH.longitude, 0);
-  const moonEquatorial = Astronomy.Equator(Astronomy.Body.Moon, instant, observer, true, true);
-  const moonEcliptic = Astronomy.RotateVector(Astronomy.Rotation_EQD_ECT(instant), moonEquatorial.vec);
-  const expectedMoonLongitude = toSidereal(
-    ((Math.atan2(moonEcliptic.y, moonEcliptic.x) * (180 / Math.PI)) % 360 + 360) % 360,
+  const topocentricEquatorial = Astronomy.Equator(Astronomy.Body.Moon, instant, observer, true, true);
+  const topocentricEcliptic = Astronomy.RotateVector(Astronomy.Rotation_EQD_ECT(instant), topocentricEquatorial.vec);
+  const topocentricLongitude = toSidereal(
+    ((Math.atan2(topocentricEcliptic.y, topocentricEcliptic.x) * (180 / Math.PI)) % 360 + 360) % 360,
     instant
   );
-  assert.ok(angularDifference(chart.planets.Moon.longitude, expectedMoonLongitude) < 1e-10);
+  assert.ok(angularDifference(chart.planets.Moon.longitude, topocentricLongitude) > 0.1);
 
   const geocentric = getPlanetSiderealLongitudes(instant);
   assert.equal(geocentric.positionReference, "geocentric");
-  assert.ok(angularDifference(chart.planets.Moon.longitude, geocentric.sidereal.Moon) > 0.1);
+  assert.ok(angularDifference(chart.planets.Moon.longitude, geocentric.sidereal.Moon) < 1e-10);
 });
 
 test("charts without coordinates are explicitly marked geocentric", () => {

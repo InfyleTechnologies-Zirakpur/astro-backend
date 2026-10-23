@@ -5,6 +5,7 @@ config/firebase-service-account.json
 
 firebase-service-account.json
 *.json
+!data/numeroKnowledgeBase.json
 
 mp4.py
 output.txt

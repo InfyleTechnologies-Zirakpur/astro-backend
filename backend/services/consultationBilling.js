@@ -1,14 +1,20 @@
 // Prepaid consultation billing.
 //
-// The product rule is "jitna payment, utna minute": a (client, astrologer)
-// pair burns its free minutes first, and from the moment those run out every
-// started minute is debited from the client's wallet *before* it is granted.
-// A session can therefore never run past the minutes the client actually paid
-// for — if the wallet cannot cover the next minute the consultation is ended
-// with `reason = "insufficient_balance"` instead of silently running up a bill
-// that can never be collected (which is what the old end-of-session settlement
-// did: it marked the whole session `paymentStatus: "failed"` and left the
+// The product rule is "jitna payment, utna minute": the client burns their one
+// free trial first, and from the moment it runs out every started minute is
+// debited from the client's wallet *before* it is granted. A session can
+// therefore never run past the minutes the client actually paid for — if the
+// wallet cannot cover the next minute the consultation is ended with
+// `reason = "insufficient_balance"` instead of silently running up a bill that
+// can never be collected (which is what the old end-of-session settlement did:
+// it marked the whole session `paymentStatus: "failed"` and left the
 // astrologer unpaid).
+//
+// The free trial is PER USER, not per (client, astrologer) pair: "pehli baar
+// free, phir hamesha paid". A user's single 10-minute window burns down across
+// whichever astrologers they consult first, and once it is exhausted every
+// later consultation — with any astrologer, including a brand-new one — is
+// pay-first.
 //
 // Billing is incremental and idempotent: `settleConsultation` only charges the
 // minutes that have not been charged yet (`consultation.billedMin` is the
@@ -41,10 +47,14 @@ const freeLimitSecFor = (profile) =>
     ? (profile.freeMinutesLimitMin ?? FREE_MINUTES_DEFAULT) * 60
     : 0;
 
-const freeRemainingSecFor = async (clientId, astrologerId, profile) => {
-  if (!profile?.freeMinutesEnabled) return 0;
-  const limit = (profile.freeMinutesLimitMin ?? FREE_MINUTES_DEFAULT) * 60;
-  const usage = await FreeUsage.findOne({ client: clientId, astrologer: astrologerId }).lean();
+// The free window is owned by the client, so the astrologer's own
+// `freeMinutesEnabled` switch still gates whether that window exists at all
+// (a profile that opts out grants nobody a free trial), but the usage counter
+// is keyed on the client alone.
+const freeRemainingSecFor = async (clientId, profile) => {
+  const limit = freeLimitSecFor(profile);
+  if (limit <= 0) return 0;
+  const usage = await FreeUsage.findOne({ client: clientId }).lean();
   return Math.max(0, limit - (usage?.freeSecondsUsed || 0));
 };
 
@@ -88,12 +98,17 @@ const settleConsultationUnsafe = async (matchOrId, { now } = {}) => {
   const limitSec = freeLimitSecFor(profile);
 
   const usage = await FreeUsage.findOneAndUpdate(
-    { client: c.client, astrologer: c.astrologer },
+    { client: c.client },
     { $setOnInsert: { freeSecondsUsed: 0, freeExhausted: false } },
     { new: true, upsert: true },
   );
 
-  const startedAtMs = new Date(c.startedAt || match.createdAt).getTime();
+  // Billing starts from callConnectedAt if the call was connected, otherwise
+  // from startedAt. This ensures we only charge for actual call time, not
+  // ringing/connection time.
+  const billingStartMs = c.callConnectedAt
+    ? new Date(c.callConnectedAt).getTime()
+    : new Date(c.startedAt || match.createdAt).getTime();
   // The clock stops for good once the session has an `endedAt` — otherwise a
   // status poll arriving after the end (or the sweep re-reading an ended
   // document) would keep extending the duration and charging more minutes.
@@ -102,10 +117,11 @@ const settleConsultationUnsafe = async (matchOrId, { now } = {}) => {
     : now
       ? new Date(now)
       : new Date();
-  const durationSec = Math.max(0, Math.round((endedAt.getTime() - startedAtMs) / 1000));
+  const durationSec = Math.max(0, Math.round((endedAt.getTime() - billingStartMs) / 1000));
 
-  // Free minutes are per pair and accumulate across sessions, so only the
-  // seconds never granted before come out of the free window.
+  // Free minutes belong to the client and accumulate across sessions — and
+  // across astrologers — so only the seconds never granted before come out of
+  // the free window.
   const freeUsedBefore = usage.freeSecondsUsed || 0;
   const freeRemainingBefore = Math.max(0, limitSec - freeUsedBefore);
   const freeSecGrantedTotal = Math.min(durationSec, freeRemainingBefore);
@@ -328,8 +344,50 @@ const sweepActiveConsultations = async ({ limit = 200 } = {}) => {
 
   let settled = 0;
   let stopped = 0;
+  let noAnswer = 0;
+  const now = new Date();
   for (const match of matches) {
     try {
+      // Auto-timeout: if the call was never connected within 60 seconds of
+      // starting, end the consultation and refund any charges. This handles
+      // the case where the astrologer doesn't answer the call.
+      const c = match.consultation;
+      if (!c.callConnectedAt && c.startedAt) {
+        const elapsedSec = Math.round((now.getTime() - new Date(c.startedAt).getTime()) / 1000);
+        if (elapsedSec > 60) {
+          // Refund any charges that were deducted during the ringing period
+          if (c.amount > 0 && c.billedMin > 0) {
+            const wallet = await getOrCreateWallet(c.client);
+            wallet.balance += c.amount;
+            await wallet.save();
+            await WalletTransaction.create({
+              user: c.client,
+              type: "credit",
+              amount: c.amount,
+              balanceAfter: wallet.balance,
+              reason: "refund",
+              consultationMatch: match._id,
+              meta: { refundReason: "no_answer", originalAmount: c.amount },
+            });
+            // Debit the astrologer's wallet for the refunded amount
+            const astroWallet = await getOrCreateWallet(c.astrologer);
+            astroWallet.balance = Math.max(0, astroWallet.balance - c.amount);
+            await astroWallet.save();
+            await WalletTransaction.create({
+              user: c.astrologer,
+              type: "debit",
+              amount: c.amount,
+              balanceAfter: astroWallet.balance,
+              reason: "consultation_charge_refund",
+              consultationMatch: match._id,
+              meta: { refundReason: "no_answer", originalAmount: c.amount },
+            });
+          }
+          await finalizeConsultation(match, { reason: "no_answer" });
+          noAnswer += 1;
+          continue;
+        }
+      }
       const summary = await settleConsultation(match);
       if (!summary || summary.skipped) continue;
       settled += 1;
@@ -343,7 +401,7 @@ const sweepActiveConsultations = async ({ limit = 200 } = {}) => {
       console.error("consultation billing sweep failed", match?._id, error?.message);
     }
   }
-  return { checked: matches.length, settled, stopped };
+  return { checked: matches.length, settled, stopped, noAnswer };
 };
 
 let sweepTimer = null;

@@ -173,7 +173,9 @@ const sendMessage = async (req, res, next) => {
       text,
       type: "text",
       messageId: populatedMessage._id,
-    });
+    }).catch((error) =>
+      console.error("[push] chat notification failed:", error?.message || error),
+    );
 
     res.status(201).json({ success: true, message: "Message sent", data: populatedMessage });
   } catch (error) { next(error); }
@@ -217,7 +219,9 @@ const sendStickerMessage = async (req, res, next) => {
       text,
       type: "sticker",
       messageId: populatedMessage._id,
-    });
+    }).catch((error) =>
+      console.error("[push] sticker notification failed:", error?.message || error),
+    );
 
     res.status(201).json({ success: true, message: "Sticker sent", data: populatedMessage });
   } catch (error) { next(error); }
@@ -269,7 +273,9 @@ const sendMediaMessage = async (req, res, next) => {
       text: caption,
       type: "media",
       messageId: populatedMessage._id,
-    });
+    }).catch((error) =>
+      console.error("[push] media notification failed:", error?.message || error),
+    );
 
     res.status(201).json({ success: true, message: "Media message sent", data: populatedMessage });
   } catch (error) { next(error); }

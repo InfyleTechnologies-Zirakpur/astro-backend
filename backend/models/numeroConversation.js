@@ -8,6 +8,8 @@ const numeroConversationSchema = new mongoose.Schema({
   // Snapshot of the numbers the answer was grounded in, so history stays
   // correct even if the user later updates their name/DOB.
   numeroContext: { type: mongoose.Schema.Types.Mixed, default: null },
+  // What this question cost: { charged, isFree, freeRemaining, walletBalance }.
+  billing: { type: mongoose.Schema.Types.Mixed, default: null },
 }, { timestamps: true });
 
 numeroConversationSchema.index({ user: 1, createdAt: -1 });

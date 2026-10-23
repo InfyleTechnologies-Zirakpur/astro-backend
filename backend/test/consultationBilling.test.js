@@ -25,6 +25,7 @@ const state = {
   profile: null,
   profiles: {},
   usage: null,
+  freeUsageFilters: [],
   wallet: null,
   astroWallet: null,
   transactions: [],
@@ -125,8 +126,14 @@ stub("models/astrologerProfile.js", {
   },
 });
 stub("models/freeUsage.js", {
-  findOne: () => queryOf(state.usage),
-  findOneAndUpdate: async () => state.usage,
+  findOne: (filter) => {
+    state.freeUsageFilters.push(filter);
+    return queryOf(state.usage);
+  },
+  findOneAndUpdate: async (filter) => {
+    state.freeUsageFilters.push(filter);
+    return state.usage;
+  },
 });
 stub("models/wallet.js", {
   findOne: (query) =>
@@ -177,6 +184,7 @@ const {
   ensureBillable,
   billingPreview,
   finalizeConsultation,
+  freeRemainingSecFor,
   sweepActiveConsultations,
 } = require("../services/consultationBilling");
 
@@ -193,6 +201,7 @@ const reset = ({ freeUsed = 0, balance = 0, limitMin = 0, astroBalance = 0 } = {
   state.profile = profileWith(limitMin);
   state.profiles = {};
   state.usage = { freeSecondsUsed: freeUsed, freeExhausted: false, save: async () => {} };
+  state.freeUsageFilters.length = 0;
   state.wallet = walletDoc(balance);
   state.astroWallet = walletDoc(astroBalance);
   state.transactions.length = 0;
@@ -365,6 +374,45 @@ test("the status preview asks the payer to recharge — even after the stop", as
     false,
     "free minutes mean nothing to pay yet",
   );
+});
+
+test("the free trial belongs to the client, not the pair", async () => {
+  // A client's one 10-minute window is keyed on the client alone: switching to
+  // a brand-new astrologer must NOT hand out a second free trial.
+  reset({ limitMin: 10, freeUsed: 0, balance: 0 });
+  const firstAstrologer = objectId();
+  state.profiles[String(firstAstrologer)] = profileWith(10);
+  const first = makeMatch({
+    startedAt: minutesAgo(3),
+    astrologerId: firstAstrologer,
+  });
+  await settleConsultation(first);
+  assert.equal(first.consultation.freeSecGranted, 180);
+
+  // Same client, a different astrologer: the remaining free window is 7 min,
+  // not a fresh 10.
+  const remaining = await freeRemainingSecFor(CLIENT_ID, profileWith(10));
+  assert.equal(remaining, 7 * 60, "the trial burns down across astrologers");
+
+  // Every free-usage lookup is keyed on the client only — never the pair.
+  assert.ok(state.freeUsageFilters.length > 0);
+  for (const filter of state.freeUsageFilters) {
+    assert.equal(filter.astrologer, undefined, "the pair is not part of the key");
+    assert.equal(String(filter.client), CLIENT_ID);
+  }
+});
+
+test("the free trial no longer applies after it is spent, even with a new astrologer", async () => {
+  // Free window fully used on an earlier astrologer…
+  reset({ limitMin: 10, freeUsed: 600, balance: 0 });
+  const newAstrologer = objectId();
+  state.profiles[String(newAstrologer)] = profileWith(10);
+  const match = makeMatch({ startedAt: minutesAgo(1), astrologerId: newAstrologer });
+
+  assert.equal(await freeRemainingSecFor(CLIENT_ID, profileWith(10)), 0);
+  const gate = await ensureBillable(match);
+  assert.equal(gate.ok, false);
+  assert.equal(gate.reason, "insufficient_balance", "a new astrologer still requires payment");
 });
 
 test("the sweep stops a running session once the paid minutes are gone", async () => {

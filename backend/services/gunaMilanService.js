@@ -194,4 +194,13 @@ const calculateGunaMilan = (moonLongitudeA, moonLongitudeB) => {
   };
 };
 
-module.exports = { calculateGunaMilan };
+module.exports = {
+  calculateGunaMilan,
+  // The classification tables are exported so the Kundli-match endpoint can
+  // describe each partner's varna / gana / nadi directly. They were already
+  // the single source of truth for the scoring below — duplicating them in
+  // the controller would let the displayed value drift from the scored one.
+  VARNA,
+  GANA,
+  NADI,
+};

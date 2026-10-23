@@ -117,6 +117,19 @@ stub("models/wallet.js", { findOne: async () => ({ balance: 1000, save: async ()
 stub("models/walletTransaction.js", { create: async (doc) => doc });
 stub("models/review.js", { findOne: async () => null, create: async (doc) => doc });
 stub("services/socketHub.js", { getIo: () => null, isUserInCall: () => false, clearUserInCall: () => {} });
+// The push service is stubbed as well — the tests never talk to Firebase or
+// to the device-token collection, they only record what would be pushed.
+const pushes = [];
+stub("services/notificationService.js", {
+  sendConsultationNotification: async (payload) => {
+    pushes.push({ kind: "consultation", ...payload });
+    return { success: true, sent: 1, failed: 0, results: [] };
+  },
+  sendQueueNotification: async (payload) => {
+    pushes.push({ kind: "queue", ...payload });
+    return { success: true, sent: 1, failed: 0, results: [] };
+  },
+});
 // Plenty of free minutes keeps the wallet gate out of these tests. The billing
 // service is stubbed the same way `astrologerController` used to be — this file
 // only exercises the request/reuse logic, while the billing math has its own
@@ -166,6 +179,7 @@ const reset = () => {
   state.existing = null;
   state.created.length = 0;
   state.saves = 0;
+  pushes.length = 0;
 };
 
 test("a pair with no match yet still gets a fresh consultation", async () => {
@@ -265,4 +279,25 @@ test("a pre-existing matchmaking match is converted instead of duplicated", asyn
   assert.equal(existing.consultation.client, CLIENT_ID);
   assert.equal(existing.consultation.ratePerMin, 10);
   assert.equal(existing.score, 82, "the compatibility report is left alone");
+});
+
+test("the astrologer is pushed when a consultation is requested", async () => {
+  reset();
+
+  const res = await runRequest("chat");
+
+  assert.equal(res.statusCode, 201);
+  assert.equal(pushes.length, 1, "exactly one push goes out");
+
+  const push = pushes[0];
+  assert.equal(push.kind, "consultation");
+  assert.equal(push.astrologerId, ASTROLOGER_ID, "the astrologer is the one notified");
+  assert.equal(push.clientId, CLIENT_ID);
+  assert.equal(push.clientName, "Client");
+  assert.equal(push.channel, "chat");
+  assert.equal(
+    String(push.matchId),
+    String(res.payload.data.matchId),
+    "the push points at the chat that was opened",
+  );
 });

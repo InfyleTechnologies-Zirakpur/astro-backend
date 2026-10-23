@@ -178,6 +178,13 @@ horoscopeSchema.pre("validate", function computeCharts() {
       chart: this.vedicChart,
       utcDate: this.vedicChart?.birthInstant ? new Date(this.vedicChart.birthInstant) : null,
     });
+
+    // The Moon's nakshatra is the single most-consulted fact about a chart —
+    // it decides the birth dasha lord — so it is derived from the chart
+    // instead of being left blank. A user-supplied value still wins.
+    if (!this.isModified("nakshatra")) {
+      this.nakshatra = this.vedicChart?.moonNakshatra?.name || "";
+    }
   }
 });
 

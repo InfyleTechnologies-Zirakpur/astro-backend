@@ -36,6 +36,13 @@ const sendNotificationToToken = async ({ token, title, body, data = {} }) => {
 
 const { isUserViewingChat } = require("./socketHub");
 
+/// FCM error codes that mean the token itself is dead — the app was
+/// uninstalled or the token rotated. Such a token is never tried again.
+const DEAD_TOKEN_CODES = new Set([
+  "messaging/registration-token-not-registered",
+  "messaging/invalid-registration-token",
+]);
+
 const messageBodyFor = (type, text) => {
   switch (type) {
     case "sticker":
@@ -123,15 +130,46 @@ const sendCallNotification = async ({
 };
 
 const sendNotificationToUser = async ({ userId, title, body, data = {} }) => {
-  const devices = await DeviceToken.find({
-    user: userId,
-    isActive: true,
-  });
-
-  if (!devices.length) {
+  if (!messaging) {
+    // Firebase is not configured or could not start — the push is skipped, but
+    // the chat or the consultation itself is unaffected.
+    console.warn(`[push] Firebase is unavailable — "${title}" skipped`);
     return {
       success: false,
-      message: "No active devices found for this user",
+      reason: "firebase_unavailable",
+      sent: 0,
+      failed: 0,
+      results: [],
+    };
+  }
+
+  let devices = [];
+  try {
+    devices = await DeviceToken.find({
+      user: userId,
+      isActive: true,
+    });
+  } catch (error) {
+    // A database hiccup must never take the chat or the consultation down.
+    console.error(`[push] could not read device tokens for ${userId}:`, error.message);
+    return {
+      success: false,
+      error: "Could not read device tokens",
+      sent: 0,
+      failed: 0,
+      results: [],
+    };
+  }
+
+  if (!devices.length) {
+    // Not an error: the person may simply not have the app installed.
+    console.warn(`[push] no active device for user ${userId} — "${title}" skipped`);
+    return {
+      success: false,
+      reason: "no_device",
+      sent: 0,
+      failed: 0,
+      results: [],
     };
   }
 
@@ -151,20 +189,116 @@ const sendNotificationToUser = async ({ userId, title, body, data = {} }) => {
     });
 
     if (result.success) {
-      await DeviceToken.findByIdAndUpdate(device._id, {
-        lastUsedAt: new Date(),
-      });
-    } else if (result.code === "messaging/registration-token-not-registered") {
-      await DeviceToken.findByIdAndUpdate(device._id, {
-        isActive: false,
-      });
+      try {
+        await DeviceToken.findByIdAndUpdate(device._id, {
+          lastUsedAt: new Date(),
+        });
+      } catch (error) {
+        // Keeping the "last used" stamp fresh is nice to have, not critical.
+        console.error(`[push] could not update the token stamp: ${error.message}`);
+      }
+    } else if (DEAD_TOKEN_CODES.has(result.code)) {
+      // The app is gone or the token rotated — stop trying this one.
+      try {
+        await DeviceToken.findByIdAndUpdate(device._id, {
+          isActive: false,
+        });
+        console.warn(`[push] dropped a dead token for user ${userId}`);
+      } catch (error) {
+        console.error(`[push] could not drop a dead token: ${error.message}`);
+      }
+    } else {
+      console.error(
+        `[push] failed for user ${userId} (${result.code || "unknown"}): ${result.error}`,
+      );
     }
   }
 
+  const sent = results.filter((r) => r.success).length;
+  const failed = results.length - sent;
+  if (failed > 0) {
+    console.warn(`[push] "${title}" → ${sent} sent, ${failed} failed (user ${userId})`);
+  } else {
+    console.log(`[push] "${title}" → ${sent} sent (user ${userId})`);
+  }
+
   return {
-    success: true,
+    success: sent > 0,
+    sent,
+    failed,
     results,
   };
+};
+
+/**
+ * Push for a brand new consultation request. The socket event only reaches a
+ * console that is open and connected, so the astrologer also gets a push —
+ * otherwise a request never lands when their app is closed.
+ */
+const sendConsultationNotification = async ({
+  astrologerId,
+  astrologerName = "",
+  clientId,
+  clientName = "",
+  matchId,
+  channel = "chat",
+  ratePerMin = 0,
+}) => {
+  const name = clientName || "A client";
+  const body =
+    channel === "chat"
+      ? `${name} wants to chat with you.`
+      : channel === "video"
+        ? `${name} wants a video call with you.`
+        : `${name} wants to talk to you.`;
+
+  const result = await sendNotificationToUser({
+    userId: astrologerId,
+    title: "New consultation request",
+    body,
+    data: {
+      type: "consultation",
+      matchId: String(matchId),
+      channel,
+      ratePerMin: String(ratePerMin || 0),
+      clientId: String(clientId || ""),
+      clientName: name,
+      astrologerId: String(astrologerId || ""),
+      astrologerName: astrologerName || "",
+    },
+  });
+
+  return result;
+};
+
+/**
+ * Push for a client that had to wait in the queue because the astrologer was
+ * busy. The astrologer gets it so someone waiting is never invisible.
+ */
+const sendQueueNotification = async ({
+  astrologerId,
+  clientId,
+  clientName = "",
+  position = 1,
+}) => {
+  const name = clientName || "A client";
+  const result = await sendNotificationToUser({
+    userId: astrologerId,
+    title: "Someone is waiting",
+    body:
+      position > 1
+        ? `${name} is waiting in your queue (position ${position}).`
+        : `${name} is waiting for you.`,
+    data: {
+      type: "queue",
+      position: String(position),
+      clientId: String(clientId || ""),
+      clientName: name,
+      astrologerId: String(astrologerId || ""),
+    },
+  });
+
+  return result;
 };
 
 module.exports = {
@@ -172,4 +306,6 @@ module.exports = {
   sendNotificationToUser,
   sendChatNotification,
   sendCallNotification,
+  sendConsultationNotification,
+  sendQueueNotification,
 };

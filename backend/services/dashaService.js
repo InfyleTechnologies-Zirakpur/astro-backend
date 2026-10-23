@@ -28,10 +28,15 @@
 //   period boundaries by up to ~1.5%; 365.25 is the modern software default.
 // - Rahu and Ketu get dasha periods (18 and 7) despite being chhaya grahas
 //   (lunar nodes with no independent orbit), per standard Vimshottari practice.
-// - Dasha periods are computed from the Moon's MEAN position, consistent with
-//   the mean-node-based ayanamsha model in ayanamsha.js. Pairing a mean-node
-//   ayanamsha with a true-node Moon longitude (or vice versa) introduces a
-//   fraction-of-a-degree inconsistency; we keep both on the mean basis.
+// - Dasha periods are computed from the Moon's GEOCENTRIC apparent sidereal
+//   longitude at birth — the same position the natal chart uses (see
+//   vedicAstrologyService.getPlanetSiderealLongitudes). This is the standard
+//   Parashari basis and the one every mainstream Jyotish package uses. It
+//   must NOT be a topocentric Moon: the Moon's diurnal parallax reaches ~1
+//   deg, which is enough to move it into a neighbouring nakshatra and shift
+//   every dasha boundary by months. It must also not be paired with a
+//   different planet from the chart — the birth nakshatra has to be the one
+//   printed on the chart, or the dasha and the chart contradict each other.
 
 const { RASHIS, RASHI_LORDS, getNakshatra } = require("./vedicAstrologyService");
 

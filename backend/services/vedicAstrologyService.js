@@ -29,7 +29,7 @@
 //    of an arcminute over historical birth-date ranges).
 
 const Astronomy = require("astronomy-engine");
-const { toSidereal, getAyanamsha } = require("./ayanamsha");
+const { toSidereal, getAyanamsha, getTrueAyanamsha } = require("./ayanamsha");
 const { normalizeTimeOfBirth } = require("./astrologyService");
 
 const RASHIS = [
@@ -152,39 +152,47 @@ const getTrueNodeLongitude = (date) => {
 };
 
 // --- Planetary sidereal longitudes ---
-const getTopocentricEclipticLongitude = (body, date, observer) => {
-  const equatorial = Astronomy.Equator(body, date, observer, true, true);
-  const ecliptic = Astronomy.RotateVector(Astronomy.Rotation_EQD_ECT(date), equatorial.vec);
-  return ((Math.atan2(ecliptic.y, ecliptic.x) * (180 / Math.PI)) % 360 + 360) % 360;
-};
-
-const getPlanetSiderealLongitudes = (date, observerLocation) => {
-  const hasObserver =
-    Number.isFinite(observerLocation?.latitude) && Number.isFinite(observerLocation?.longitude);
-  const observer = hasObserver
-    ? new Astronomy.Observer(observerLocation.latitude, observerLocation.longitude, 0)
-    : null;
-  // Uranus, Neptune and Pluto are geocentric as well, so they ride the same
-  // topocentric/geocentric path as the classical planets.
+//
+// Every position here is GEOCENTRIC, always.
+//
+// A natal rasi chart in Jyotish is a geocentric chart. Swiss Ephemeris — the
+// engine behind Drik Panchang, Jagannatha Hora and every other mainstream
+// Jyotish package — returns geocentric apparent ecliptic longitudes for natal
+// work; topocentric positions are reserved for a narrow set of phenomena
+// (Sunrise/sunset corrections, some Pratyantardasha edge cases).
+//
+// This matters most for the Moon, whose diurnal parallax reaches ~1 degree.
+// A topocentric Moon can therefore sit in a different sign AND a different
+// nakshatra than the geocentric one — and the whole Vimshottari dasha chain
+// is anchored on the Moon's birth nakshatra, so a topocentric Moon shifts
+// every period boundary by months.
+//
+// Verified against Swiss Ephemeris (the engine behind every mainstream
+// Jyotish package) for birth 31 Aug 1989, 18:24 IST, Hanumangarh
+// (29.5818 N, 74.3294 E):
+//   geocentric Moon   -> 137.7293 deg sidereal -> Rahu mahadasha begins
+//                         27 Jan 2026 and ends 27 Jan 2044
+//   topocentric Moon  -> 137.1675 deg sidereal -> Rahu mahadasha begins
+//                         30 Nov 2026 (10 months late)
+// The 0.56 deg difference is the Moon's parallax at that instant.
+//
+// The Sun's parallax is 8.8 arcsec and the other planets' is negligible, so
+// the Moon is the body this rule really bites on — but the rule is applied
+// uniformly so there is a single, auditable position model.
+const getPlanetSiderealLongitudes = (date) => {
+  // Uranus, Neptune and Pluto ride the same geocentric path as the classical
+  // planets.
   const bodies = {
-    Sun: null, Moon: null,
     Mars: "Mars", Mercury: "Mercury", Jupiter: "Jupiter",
     Venus: "Venus", Saturn: "Saturn",
     Uranus: "Uranus", Neptune: "Neptune", Pluto: "Pluto",
   };
   const tropical = {};
 
-  tropical.Sun = observer
-    ? getTopocentricEclipticLongitude(Astronomy.Body.Sun, date, observer)
-    : Astronomy.SunPosition(date).elon;
-  tropical.Moon = observer
-    ? getTopocentricEclipticLongitude(Astronomy.Body.Moon, date, observer)
-    : Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body.Moon, date, true)).elon;
+  tropical.Sun = Astronomy.SunPosition(date).elon;
+  tropical.Moon = Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body.Moon, date, true)).elon;
   for (const [name, bodyKey] of Object.entries(bodies)) {
-    if (!bodyKey) continue;
-    tropical[name] = observer
-      ? getTopocentricEclipticLongitude(Astronomy.Body[bodyKey], date, observer)
-      : Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body[bodyKey], date, true)).elon;
+    tropical[name] = Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body[bodyKey], date, true)).elon;
   }
 
   // Rahu (true node; mean node as a defensive fallback). Ketu = Rahu + 180.
@@ -203,41 +211,109 @@ const getPlanetSiderealLongitudes = (date, observerLocation) => {
   return {
     sidereal,
     nodeType,
-    positionReference: observer ? "topocentric" : "geocentric",
+    positionReference: "geocentric",
   }; // sidereal: { Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Uranus, Neptune, Pluto, Rahu, Ketu } in sidereal degrees
 };
 
 // --- Retrograde (vakri) detection ---
-// A planet is retrograde when its ecliptic longitude decreases with time. The
-// Sun and Moon are always direct; the lunar nodes (Rahu/Ketu) are always
-// retrograde, so they need no computation.
-const getTropicalLongitude = (bodyName, date, observer) => {
-  const bodyKey = Astronomy.Body[bodyName];
-  if (!bodyKey) return Number.NaN;
-  if (bodyName === "Sun") {
-    return observer
-      ? getTopocentricEclipticLongitude(Astronomy.Body.Sun, date, observer)
-      : Astronomy.SunPosition(date).elon;
-  }
-  return observer
-    ? getTopocentricEclipticLongitude(bodyKey, date, observer)
-    : Astronomy.Ecliptic(Astronomy.GeoVector(bodyKey, date, true)).elon;
+//
+// A planet is retrograde when its geocentric ecliptic longitude is DECREASING.
+//
+//   - The Sun is never retrograde (it travels the zodiac in one direction).
+//   - The Moon is never retrograde either. Its geocentric ecliptic longitude
+//     increases monotonically — its daily motion runs from about +11.8 to
+//     +14.9 deg and never turns negative, because the Moon's orbit around the
+//     Earth is prograde. Its elongation from the Sun likewise only ever grows
+//     (about +10.8 to +13.9 deg/day). So there is no "vakri Chandra" to find,
+//     and Jyotish never speaks of one. It is decided by definition, not by
+//     measurement.
+//   - The lunar nodes (Rahu/Ketu) are ALWAYS retrograde. They have no orbit of
+//     their own, they only ever travel backwards along the ecliptic, so this
+//     is a matter of definition rather than measurement. Measuring them is
+//     actively wrong: the TRUE node's instantaneous rate can turn positive for
+//     short stretches (its periodic perturbation is larger than the mean
+//     node's -0.053 deg/day motion), so a measured test would have the nodes
+//     flipping between retrograde and direct from chart to chart — and the
+//     strength engine gives the nodes a x3 retrograde multiplier, so the error
+//     would land in the planetary-strength numbers.
+//
+// Retrograde is measured geocentrically for every body. Topocentric and
+// geocentric longitudes differ by up to ~1 deg for the Moon, which is enough
+// to shift the answer near a station, and it made the chart and the strength
+// engine disagree.
+//
+// The measurement window is body-specific. It has to be long enough that the
+// longitude difference stays clear of the ephemeris' own precision, and short
+// enough that the window cannot straddle a station and flip the answer. A
+// single global 2-day window (the old one) misclassified Mercury every time a
+// station happened to fall inside it — Mercury turns station roughly every
+// three weeks, so that window was hit often.
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const RETROGRADE_STEP_DAYS = {
+  Mercury: 0.05,
+  Venus: 0.05,
+  Mars: 0.25,
+  Jupiter: 2,
+  Saturn: 5,
+  Uranus: 10,
+  Neptune: 10,
+  Pluto: 20,
 };
 
-const getIsRetrograde = (bodyName, date, observer) => {
+// A longitude change smaller than this counts as "stationary" rather than
+// direct or retrograde. At the stations the body is, by definition, neither.
+const STATION_TOLERANCE_DEG = 0.001;
+
+// Geocentric tropical ecliptic longitude for a body. Geocentric for the same
+// reason the chart is: one position model, no observer-dependent drift.
+const getTropicalLongitude = (bodyName, date) => {
+  const bodyKey = Astronomy.Body[bodyName];
+  if (!bodyKey) return Number.NaN;
+  if (bodyName === "Sun") return Astronomy.SunPosition(date).elon;
+  return Astronomy.Ecliptic(Astronomy.GeoVector(bodyKey, date, true)).elon;
+};
+
+const getIsRetrograde = (bodyName, date) => {
   if (bodyName === "Rahu" || bodyName === "Ketu") return true;
   if (bodyName === "Sun" || bodyName === "Moon") return false;
 
-  const stepMs = 2 * 24 * 60 * 60 * 1000; // 2 days, so slow-moving planets read cleanly
-  const now = getTropicalLongitude(bodyName, date, observer);
-  const later = getTropicalLongitude(bodyName, new Date(date.getTime() + stepMs), observer);
-  if (!Number.isFinite(now) || !Number.isFinite(later)) return false;
+  const stepDays = RETROGRADE_STEP_DAYS[bodyName] ?? 1;
+  const stepMs = stepDays * DAY_MS;
+  const before = getTropicalLongitude(bodyName, new Date(date.getTime() - stepMs));
+  const after = getTropicalLongitude(bodyName, new Date(date.getTime() + stepMs));
+  if (!Number.isFinite(before) || !Number.isFinite(after)) return false;
 
-  // Wrap-safe difference: a planet at 359° moving to 1° is direct, not retrograde.
-  let delta = later - now;
+  // Wrap-safe difference: a planet at 359 deg moving to 1 deg is direct, not
+  // retrograde.
+  let delta = after - before;
   if (delta > 180) delta -= 360;
   if (delta < -180) delta += 360;
+
+  // Stationary: the body is at the turn, so it is neither.
+  if (Math.abs(delta) < STATION_TOLERANCE_DEG) return false;
   return delta < 0;
+};
+
+/**
+ * Retrograde state for every body at one instant.
+ *
+ * This is the single source of truth for vakri: the chart and the strength
+ * engine both read it, so the two can never report a planet as retrograde in
+ * one place and direct in another.
+ *
+ * @param {Date} date
+ * @returns {Object<string, boolean>}
+ */
+const getRetrogradeMap = (date) => {
+  const out = { Sun: false, Moon: false };
+  for (const name of Object.keys(RETROGRADE_STEP_DAYS)) {
+    out[name] = getIsRetrograde(name, date);
+  }
+  // The nodes are retrograde by definition, never by measurement.
+  out.Rahu = true;
+  out.Ketu = true;
+  return out;
 };
 
 // --- Navamsha (D9) sign for a given sidereal longitude ---
@@ -296,12 +372,14 @@ const calculateVedicChart = (birthData = {}) => {
   const utcDate = new Date(localMillis - (Number(timeZoneOffsetMinutes) || 0) * 60 * 1000);
   if (Number.isNaN(utcDate.getTime())) return { precision: "invalid" };
 
-  const observer = hasLocation ? new Astronomy.Observer(latitude, longitude, 0) : null;
-  const { sidereal: planetLongitudes, nodeType, positionReference } = getPlanetSiderealLongitudes(
-    utcDate,
-    observer ? { latitude, longitude } : null
-  );
+  // Every planetary position is geocentric — see getPlanetSiderealLongitudes.
+  const { sidereal: planetLongitudes, nodeType, positionReference } =
+    getPlanetSiderealLongitudes(utcDate);
   const moonNakshatra = getNakshatra(planetLongitudes.Moon);
+
+  // Retrograde is measured once for the whole chart, geocentrically, so the
+  // chart and the strength engine can never disagree about it.
+  const retrogradeMap = getRetrogradeMap(utcDate);
 
   const planets = Object.fromEntries(
     Object.entries(planetLongitudes).map(([name, lon]) => [
@@ -315,7 +393,7 @@ const calculateVedicChart = (birthData = {}) => {
         isDebilitated: DEBILITATION[name] === getRashi(lon),
         isOwnSign: RASHI_LORDS[getRashi(lon)] === name,
         isMoolatrikona: MOOLATRIKONA[name] === getRashi(lon),
-        retrograde: getIsRetrograde(name, utcDate, observer),
+        retrograde: retrogradeMap[name] === true,
       },
     ])
   );
@@ -335,7 +413,8 @@ const calculateVedicChart = (birthData = {}) => {
       planets,
       moonRashi: getRashi(planetLongitudes.Moon),
       moonNakshatra,
-      ayanamshaUsed: getAyanamsha(utcDate),
+      ayanamshaUsed: getTrueAyanamsha(utcDate),
+      meanAyanamsha: getAyanamsha(utcDate),
       nodeType,
       positionReference,
     };
@@ -371,7 +450,8 @@ const calculateVedicChart = (birthData = {}) => {
         return [i + 1, { sign: houseSign, lord: RASHI_LORDS[houseSign] }];
       })
     ),
-    ayanamshaUsed: getAyanamsha(utcDate),
+    ayanamshaUsed: getTrueAyanamsha(utcDate),
+    meanAyanamsha: getAyanamsha(utcDate),
     nodeType,
     positionReference,
   };
@@ -404,4 +484,5 @@ module.exports = {
   getRashi, degreeInSign, signIndexOf, getNavamshaSign, getNakshatra,
   getPlanetSiderealLongitudes, calculateAscendant, getHouseOfPlanet,
   calculateVedicChart, buildChartContextForQA,
+  getIsRetrograde, getRetrogradeMap, RETROGRADE_STEP_DAYS,
 };

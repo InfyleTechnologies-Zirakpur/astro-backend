@@ -174,7 +174,9 @@ const setupChatSockets = (io) => {
           text: cleanText,
           type: "text",
           messageId: message._id,
-        });
+        }).catch((error) =>
+          console.error("[push] chat notification failed:", error?.message || error),
+        );
 
         acknowledge({ success: true, data: message });
       } catch (error) {
