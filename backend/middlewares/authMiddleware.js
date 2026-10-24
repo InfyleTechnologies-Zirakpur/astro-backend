@@ -41,6 +41,35 @@ const protect = async (req, res, next) => {
   }
 };
 
+const optionalProtect = async (req, res, next) => {
+  try {
+    let token;
+
+    if (req.headers.authorization) {
+      const [scheme, value] = req.headers.authorization.split(" ");
+      if (scheme === "Bearer" && value) {
+        token = value;
+      }
+    }
+
+    if (!token && req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    }
+
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.userId);
+      if (user && user.isActive) {
+        req.user = user;
+      }
+    }
+  } catch (error) {
+    // Optional auth: continue as unauthenticated guest
+  }
+  next();
+};
+
 module.exports = {
   protect,
-};
+  optionalProtect,
+};
