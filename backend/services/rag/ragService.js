@@ -16,13 +16,14 @@ const { answerQuestion } = require("./llmService");
  *   Pass this whenever the question is about a specific user or match —
  *   omit it for general "how does X work" questions.
  * @param {number} [options.topK] - number of knowledge base chunks to retrieve (default 6)
+ * @param {Array<{buffer: Buffer, mimetype: string}>} [options.images] - optional user images
  * @returns {Promise<{answer: string, sources: Array<{id, title, section}>}>}
  */
 const askAstroQuestion = async (question, options = {}) => {
-  const { chartContext = null, topK = 6 } = options;
+  const { chartContext = null, topK = 6, images = [] } = options;
 
   const chunks = retrieve(question, topK);
-  const answer = await answerQuestion(question, chunks, chartContext);
+  const answer = await answerQuestion(question, chunks, chartContext, images);
 
   return {
     answer,

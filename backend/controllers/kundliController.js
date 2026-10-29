@@ -307,7 +307,16 @@ const getCategories = (req, res) => {
  */
 const chatKundli = async (req, res, next) => {
   try {
-    const { question, category = "general", birthDetails } = req.body || {};
+    const { question, category = "general" } = req.body || {};
+    let { birthDetails } = req.body || {};
+    if (typeof birthDetails === "string") {
+      try {
+        birthDetails = JSON.parse(birthDetails);
+      } catch {
+        return res.status(400).json({ success: false, message: "birthDetails must be valid JSON" });
+      }
+    }
+    const images = req.files || [];
 
     if (!question || typeof question !== "string" || !question.trim()) {
       return res.status(400).json({ success: false, message: "question is required" });
@@ -383,7 +392,10 @@ const chatKundli = async (req, res, next) => {
       const promptCategoryPrefix = categoryKey !== "general" ? `[Category: ${categoryKey.toUpperCase()}] ` : "";
       const enrichedQuestion = `${promptCategoryPrefix}${question.trim()}`;
 
-      const aiResponse = await askAstroQuestion(enrichedQuestion, { chartContext });
+      const aiResponse = await askAstroQuestion(enrichedQuestion, {
+        chartContext,
+        images,
+      });
       if (aiResponse && aiResponse.answer && typeof aiResponse.answer === "string" && aiResponse.answer.trim().length > 10) {
         // AI Verification: Check for obvious hallucinations or contradictions
         const text = aiResponse.answer;
@@ -403,6 +415,7 @@ const chatKundli = async (req, res, next) => {
         }
       }
     } catch (aiError) {
+      if (images.length > 0) throw aiError;
       // AI provider unavailable or error occurred: fallback to deterministic Vedic interpretation
     }
 
