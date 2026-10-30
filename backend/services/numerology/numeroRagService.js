@@ -11,13 +11,14 @@ const { answerNumeroQuestion } = require("./numeroLlmService");
  * @param {object} [options.numeroContext] - output of buildNumeroContext
  *   (from numerologyService), e.g. { fullName, dateOfBirth, mulank, bhagyank, nameNumber }
  * @param {number} [options.topK] - number of knowledge base chunks to retrieve (default 6)
+ * @param {Array<{buffer: Buffer, mimetype: string}>} [options.images] - optional user images
  * @returns {Promise<{answer: string, sources: Array<{id, title, section}>}>}
  */
 const askNumeroQuestion = async (question, options = {}) => {
-  const { numeroContext = null, topK = 6 } = options;
+  const { numeroContext = null, topK = 6, images = [] } = options;
 
   const chunks = retrieveNumero(question, topK);
-  const answer = await answerNumeroQuestion(question, chunks, numeroContext);
+  const answer = await answerNumeroQuestion(question, chunks, numeroContext, images);
 
   return {
     answer,

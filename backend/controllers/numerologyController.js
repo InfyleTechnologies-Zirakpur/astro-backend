@@ -140,7 +140,10 @@ const ask = async (req, res, next) => {
 
     let result;
     try {
-      result = await askNumeroQuestion(question.trim(), { numeroContext });
+      result = await askNumeroQuestion(question.trim(), {
+        numeroContext,
+        images: req.files || [],
+      });
     } catch (askError) {
       // The user got no answer, so they must not be charged for it.
       await numeroBilling.refundQuestion(req.user._id, consumption).catch(() => {});

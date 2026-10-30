@@ -120,7 +120,10 @@ const ask = async (req, res, next) => {
       }
     }
 
-    const result = await askAstroQuestion(question.trim(), { chartContext });
+    const result = await askAstroQuestion(question.trim(), {
+      chartContext,
+      images: req.files || [],
+    });
     await AstroConversation.create({
       user: req.user._id,
       partner: partnerId || null,
