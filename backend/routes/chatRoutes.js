@@ -41,7 +41,7 @@ router.get("/history", getChatHistory);
 router.delete("/:matchId", deleteChat);
 router.get("/:matchId/messages", getMessages);
 router.post("/:matchId/messages", sendMessage);
-router.post("/:matchId/media", uploadChatMediaFile.single("message"), sendMediaMessage);
+router.post("/:matchId/media", uploadChatMediaFile.fields([{ name: "message", maxCount: 1 }, { name: "media", maxCount: 1 }, { name: "file", maxCount: 1 }]), sendMediaMessage);
 router.post("/:matchId/sticker", sendStickerMessage);
 router.patch("/messages/:messageId/delete-for-me", deleteMessageForMe);
 router.patch("/messages/:messageId/delete-for-everyone", deleteMessageForEveryone);

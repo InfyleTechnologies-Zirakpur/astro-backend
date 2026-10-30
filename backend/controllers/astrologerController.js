@@ -98,13 +98,14 @@ const listAstrologers = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-// GET /api/astrologers/:id
+// GET /api/astrologers/:id (also supports :id === 'me' for the signed-in astrologer)
 const getAstrologerDetail = async (req, res, next) => {
   try {
-    if (!mongoose.isValidObjectId(req.params.id)) {
+    const targetId = req.params.id === "me" ? req.user?._id : req.params.id;
+    if (!targetId || !mongoose.isValidObjectId(targetId)) {
       return res.status(400).json({ success: false, message: "Invalid astrologer id" });
     }
-    const user = await User.findOne({ _id: req.params.id, role: "astrologer", isActive: true }).lean();
+    const user = await User.findOne({ _id: targetId, role: "astrologer", isActive: true }).lean();
     if (!user) return res.status(404).json({ success: false, message: "Astrologer not found" });
     const profile = await AstrologerProfile.findOne({ user: user._id }).lean();
     if (!profile) return res.status(404).json({ success: false, message: "Astrologer profile not found" });

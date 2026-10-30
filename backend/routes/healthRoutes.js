@@ -3,6 +3,13 @@ const { getProviderHealth } = require("../services/rag/llmService");
 
 const router = express.Router();
 
+router.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Server is running",
+  });
+});
+
 router.get("/ai", async (req, res) => {
   try {
     const providers = await getProviderHealth();

@@ -241,12 +241,13 @@ const sendMediaMessage = async (req, res, next) => {
         message: billingError.message,
       });
     }
-    if (!req.file) return res.status(400).json({ success: false, message: "A media file is required" });
+    const mediaFile = req.file || req.files?.message?.[0] || req.files?.media?.[0] || req.files?.file?.[0];
+    if (!mediaFile) return res.status(400).json({ success: false, message: "A media file is required" });
 
-    const mediaType = req.file.mimetype.startsWith("video/") ? "video" : "image";
+    const mediaType = mediaFile.mimetype.startsWith("video/") ? "video" : "image";
     const caption = typeof req.body.caption === "string" ? req.body.caption.trim().slice(0, 500) : "";
 
-    const uploadResult = await uploadChatMedia(req.file.buffer, req.user._id, req.file.mimetype);
+    const uploadResult = await uploadChatMedia(mediaFile.buffer, req.user._id, mediaFile.mimetype);
     const mediaUrl = uploadResult.secure_url;
     const cloudinaryPublicId = uploadResult.public_id;
 

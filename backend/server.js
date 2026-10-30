@@ -69,6 +69,7 @@ app.use("/api/astro-qa", require("./routes/astroQARoutes"));
 app.use("/api/numerology", require("./routes/numerologyRoutes"));
 app.use("/api/kundli", require("./routes/kundliRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
+app.use("/api/health", require("./routes/healthRoutes"));
 
 
 const io = new Server(httpServer, {
@@ -99,9 +100,12 @@ app.use((error, req, res, next) => {
   return res.status(500).json({ success: false, message: "Something went wrong" });
 });
 
-const PORT = process.env.PORT || 5000;
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  httpServer.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
 
-httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+module.exports = { app, httpServer };
 

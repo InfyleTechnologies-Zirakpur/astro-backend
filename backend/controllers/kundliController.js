@@ -307,7 +307,10 @@ const getCategories = (req, res) => {
  */
 const chatKundli = async (req, res, next) => {
   try {
-    const { question, category = "general", birthDetails } = req.body || {};
+    let { question, category = "general", birthDetails } = req.body || {};
+    if (typeof birthDetails === "string") {
+      try { birthDetails = JSON.parse(birthDetails); } catch (e) {}
+    }
 
     if (!question || typeof question !== "string" || !question.trim()) {
       return res.status(400).json({ success: false, message: "question is required" });

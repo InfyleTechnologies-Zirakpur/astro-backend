@@ -6,7 +6,7 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
-const MODEL = process.env.GOOGLE_MODEL || "gemini-2.5-flash";
+const MODEL = process.env.GOOGLE_MODEL || "gemini-3.5-flash";
 const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 
 const groq = process.env.GROQ_API_KEY
@@ -32,6 +32,37 @@ const OR_MAX_ATTEMPTS = 2;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+async function checkGroqHealth() {
+  if (!process.env.GROQ_API_KEY || !groq) {
+    return { healthy: false, error: 'Groq not configured' };
+  }
+  try {
+    const res = await groq.chat.completions.create({
+      model: GROQ_MODEL,
+      messages: [{ role: 'user', content: 'ping' }],
+      max_tokens: 1,
+    });
+    return { healthy: true, model: GROQ_MODEL };
+  } catch (e) {
+    return { healthy: false, error: e.message };
+  }
+}
+
+async function checkGeminiHealth() {
+  if (!process.env.GEMINI_API_KEY || !ai) {
+    return { healthy: false, error: 'Gemini not configured' };
+  }
+  try {
+    const res = await ai.models.generateContent({
+      model: MODEL,
+      contents: { role: 'user', parts: [{ text: 'ping' }] },
+    });
+    return { healthy: true, model: MODEL };
+  } catch (e) {
+    return { healthy: false, error: e.message };
+  }
+}
+
 const providers = [
   {
     name: 'openrouter',
@@ -51,6 +82,7 @@ const providers = [
     enabled: !!process.env.GROQ_API_KEY,
     maxAttempts: MAX_ATTEMPTS,
     timeout: 30000,
+    healthCheck: checkGroqHealth,
   },
   {
     name: 'gemini',
@@ -60,6 +92,7 @@ const providers = [
     enabled: !!process.env.GEMINI_API_KEY,
     maxAttempts: MAX_ATTEMPTS,
     timeout: 30000,
+    healthCheck: checkGeminiHealth,
   },
   {
     name: 'cloudflare',

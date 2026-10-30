@@ -24,8 +24,9 @@ const protect = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId || decoded.id;
 
-    const user = await User.findById(decoded.userId);
+    const user = await User.findById(userId);
     if (!user || !user.isActive) {
       return res.status(401).json({ success: false, message: "Authentication required" });
     }
@@ -58,7 +59,8 @@ const optionalProtect = async (req, res, next) => {
 
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.userId);
+      const userId = decoded.userId || decoded.id;
+      const user = await User.findById(userId);
       if (user && user.isActive) {
         req.user = user;
       }

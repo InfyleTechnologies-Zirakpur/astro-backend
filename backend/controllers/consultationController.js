@@ -45,7 +45,8 @@ const billFromMatch = (match) => {
 // POST /api/consultations/request
 const requestConsultation = async (req, res, next) => {
   try {
-    const { astrologerId, channel = "chat" } = req.body;
+    let { astrologerId, channel = "chat" } = req.body;
+    if (channel === "call") channel = "voice";
     if (!mongoose.isValidObjectId(astrologerId)) {
       return res.status(400).json({ success: false, message: "Valid astrologerId is required" });
     }
