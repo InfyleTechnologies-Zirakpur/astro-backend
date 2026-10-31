@@ -52,7 +52,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Routes
+
 app.use("/api/auth", require("./routes/authRoute"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/profile", require("./routes/profileRoutes"));
