@@ -8,6 +8,7 @@ const { normalizeTimeOfBirth } = require("../services/astrologyService");
 const { calculateGunaMilan } = require("../services/gunaMilanService");
 const { getDashaTimeline, getDashaHouseActivations } = require("../services/dashaService");
 const AstroConversation = require("../models/astroConversation");
+const { flattenUploadedImages } = require("../middlewares/uploadMiddleware");
 
 // Dasha periods are anchored to the birth instant, so the stored timezone
 // offset has to be applied rather than using raw dateOfBirth, which Mongoose
@@ -122,7 +123,7 @@ const ask = async (req, res, next) => {
 
     const result = await askAstroQuestion(question.trim(), {
       chartContext,
-      images: req.files || [],
+      images: flattenUploadedImages(req.files),
     });
     await AstroConversation.create({
       user: req.user._id,

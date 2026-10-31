@@ -16,6 +16,16 @@ const uploadOptionalImages = multer({
   { name: "image", maxCount: 1 },
 ]);
 
+// Multer's `.fields()` stores files as { images: [File], image: [File] }, but
+// the RAG services consume a flat Array<{buffer, mimetype}>. Collapse the
+// object into one array (and tolerate plain `.array()` uploads too).
+const flattenUploadedImages = (files) => {
+  if (!files) return [];
+  if (Array.isArray(files)) return files;
+  return Object.values(files).flat();
+};
+
 module.exports = {
   uploadOptionalImages,
+  flattenUploadedImages,
 };

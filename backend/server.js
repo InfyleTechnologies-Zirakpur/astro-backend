@@ -2,6 +2,8 @@ const express = require("express");
 const http = require("http");
 const path = require("path");
 const cors = require("cors");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const cookieParser = require("cookie-parser");
 const { Server } = require("socket.io");
 require("dotenv").config();
@@ -14,16 +16,62 @@ const { startBillingSweep } = require("./services/consultationBilling");
 const app = express();
 const httpServer = http.createServer(app);
 
+// Behind Render's proxy this is required so rate limiting sees the real
+// client IP instead of the proxy's (which would throttle every user as one).
+app.set("trust proxy", 1);
+
 // Database
 connectDB();
+
+// Allowed browser origins in production: CLIENT_URL plus optional comma
+// separated CORS_ORIGINS (e.g. the admin panel's URL). With none configured
+// the server keeps the permissive behaviour so a missing var can't break
+// production.
+const configuredOrigins = [
+  ...(process.env.CLIENT_URL || "").split(","),
+  ...(process.env.CORS_ORIGINS || "").split(","),
+]
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const corsOrigin =
+  process.env.NODE_ENV === "production" && configuredOrigins.length
+    ? configuredOrigins
+    : true;
 
 // Middleware
 app.use(
   cors({
-    origin: true,
+    origin: corsOrigin,
     credentials: true,
   })
 );
+
+// Security headers. CSP is off because this is a JSON API (the admin SPA
+// serves its own HTML) and uploads must stay loadable cross-origin.
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
+// Global throttle; auth endpoints get a much tighter bucket below.
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 600,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: { success: false, message: "Too many requests, please try again later" },
+  })
+);
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 40,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { success: false, message: "Too many attempts, please try again later" },
+});
 
 app.use(express.json({
   verify: (req, res, buf) => {
@@ -53,8 +101,8 @@ app.get("/health", (req, res) => {
 });
 
 
-app.use("/api/auth", require("./routes/authRoute"));
-app.use("/api/admin", require("./routes/adminRoutes"));
+app.use("/api/auth", authLimiter, require("./routes/authRoute"));
+app.use("/api/admin", authLimiter, require("./routes/adminRoutes"));
 app.use("/api/profile", require("./routes/profileRoutes"));
 app.use("/api/questionnaire", require("./routes/questionnaireRoutes"));
 app.use("/api/horoscope", require("./routes/horoscopeRoutes"));
@@ -74,7 +122,7 @@ app.use("/api/health", require("./routes/healthRoutes"));
 
 const io = new Server(httpServer, {
   cors: {
-    origin: true,
+    origin: corsOrigin,
     credentials: true,
   },
 });

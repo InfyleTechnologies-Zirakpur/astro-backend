@@ -10,6 +10,7 @@ const {
   calculateNameNumber,
 } = require("../services/numerology/numerologyService");
 const numeroBilling = require("../services/numeroBillingService");
+const { flattenUploadedImages } = require("../middlewares/uploadMiddleware");
 
 // PUT /api/numerology/profile — create or update the caller's name + DOB.
 const upsertProfile = async (req, res, next) => {
@@ -142,7 +143,7 @@ const ask = async (req, res, next) => {
     try {
       result = await askNumeroQuestion(question.trim(), {
         numeroContext,
-        images: req.files || [],
+        images: flattenUploadedImages(req.files),
       });
     } catch (askError) {
       // The user got no answer, so they must not be charged for it.

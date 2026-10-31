@@ -13,6 +13,7 @@ const { calculateFullKundli, parseNormalizedTime } = require("../services/kundli
 const { resolveBirthLocationFromPlace } = require("../services/birthLocationService");
 const { askAstroQuestion } = require("../services/rag/ragService");
 const { buildChartContextForQA } = require("../services/vedicAstrologyService");
+const { flattenUploadedImages } = require("../middlewares/uploadMiddleware");
 
 const parseDateOfBirth = (val) => {
   if (!val) return null;
@@ -308,6 +309,18 @@ const getCategories = (req, res) => {
 const chatKundli = async (req, res, next) => {
   try {
     const { question, category = "general", birthDetails } = req.body || {};
+    // Multipart uploads put files on req.files as { images: [...] }; the RAG
+    // service consumes a flat array. Also tolerate birthDetails arriving as a
+    // JSON string (multipart form fields are always strings).
+    const images = flattenUploadedImages(req.files);
+    let parsedBirthDetails = birthDetails;
+    if (typeof parsedBirthDetails === "string" && parsedBirthDetails.trim()) {
+      try {
+        parsedBirthDetails = JSON.parse(parsedBirthDetails);
+      } catch (e) {
+        parsedBirthDetails = null;
+      }
+    }
 
     if (!question || typeof question !== "string" || !question.trim()) {
       return res.status(400).json({ success: false, message: "question is required" });
@@ -319,12 +332,12 @@ const chatKundli = async (req, res, next) => {
     let calculatedData = null;
 
     // Use provided birth details, or fetch from logged-in user
-    if (birthDetails && (birthDetails.dateOfBirth || birthDetails.birthDate)) {
+    if (parsedBirthDetails && typeof parsedBirthDetails === "object" && (parsedBirthDetails.dateOfBirth || parsedBirthDetails.birthDate)) {
       try {
-        const parsedDob = parseDateOfBirth(birthDetails.dateOfBirth || birthDetails.birthDate);
+        const parsedDob = parseDateOfBirth(parsedBirthDetails.dateOfBirth || parsedBirthDetails.birthDate);
         if (parsedDob) {
           calculatedData = await calculateFullKundli({
-            ...birthDetails,
+            ...parsedBirthDetails,
             dateOfBirth: parsedDob,
           });
         }
